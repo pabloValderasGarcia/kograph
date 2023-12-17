@@ -1,0 +1,13 @@
+# | ----------- DJANGO (SERVER) ----------- |
+pip install django
+django-admin startproject backend
+cd backend
+python manage.py startapp api
+pip install djangorestframework
+
+# | ----------- VUE.JS (CLIENT) ----------- |
+cd ..
+npm install -g @vue/cli
+vue create frontend
+cd frontend
+npm run serve
