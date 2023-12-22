@@ -6,7 +6,7 @@ import UserItem from './UserItem.vue';
 
 <template>
     <div class="nav">
-        <LogoItem />
+        <router-link to="/"><LogoItem /></router-link>
         <SearcherItem />
         <UserItem />
     </div>

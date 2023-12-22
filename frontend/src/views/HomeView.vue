@@ -3,5 +3,5 @@ import '@/assets/css/main.css'
 </script>
 
 <template>
-    <router-view/>
+	<div>HOME</div>
 </template>

@@ -3,5 +3,5 @@ import '@/assets/css/main.css'
 </script>
 
 <template>
-    <router-view/>
+	<div>NO EXISTE</div>
 </template>

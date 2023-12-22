@@ -24,6 +24,7 @@ defineProps(['title', 'icon'])
     /* Text */
     font-weight: 500;
 }
+
 .active {
     background-color: #e9e9e9;
 }
