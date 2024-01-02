@@ -1,18 +1,23 @@
-<script setup>
-import LogoItem from './LogoItem.vue'
+<script>
+import LogoItem from './LogoItem.vue';
 import SearcherItem from './SearcherItem.vue';
-import UserItem from './UserItem.vue';
+import UserDropdown from './UserDropdown.vue';
+
+export default {
+    name: 'NavApp',
+    components: { LogoItem, SearcherItem, UserDropdown }
+}
 </script>
 
 <template>
     <div class="nav">
         <router-link to="/"><LogoItem /></router-link>
         <SearcherItem />
-        <UserItem />
+        <UserDropdown />
     </div>
 </template>
 
-<style>
+<style scoped>
 .nav {
     padding: 10px 45px;
     width: 100%;
