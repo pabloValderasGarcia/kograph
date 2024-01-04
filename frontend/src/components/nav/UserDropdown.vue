@@ -1,4 +1,6 @@
 <script>
+import { notify } from 'notiwind';
+
 export default {
     name: 'UserItem',
     data() {
@@ -13,6 +15,12 @@ export default {
             this.$nextTick(() => {
                 this.$router.push('/');
             });
+            notify({
+                group: "foo",
+                title: "Success",
+                text: "Successfully logout.",
+                type: "success"
+            }, 4000);
         },
         toggleDropdown() {
             this.state = !this.state;
@@ -35,8 +43,10 @@ export default {
         modeToggle() {
             if (this.darkMode || document.querySelector('body').classList.contains('dark-mode')) {
                 this.light()
+                this.$store.commit('setDarkModeChanged', false);
             } else {
                 this.dark()
+                this.$store.commit('setDarkModeChanged', true);
             }
         },
     },

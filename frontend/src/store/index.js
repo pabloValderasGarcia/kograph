@@ -5,7 +5,8 @@ export default createStore({
     state: {
         access: '',
         refresh: '',
-        user: null
+        user: null,
+        darkMode: true
     },
     mutations: {
         initializeStore(state) {
@@ -30,7 +31,17 @@ export default createStore({
             state.user = null;
             localStorage.removeItem('access');
             localStorage.removeItem('refresh');
+            localStorage.removeItem('darkMode');
+            localStorage.setItem('darkModeChanged', false);
             delete axios.defaults.headers.common['Authorization'];
+        },
+        setDarkMode(state, value) {
+            localStorage.setItem('darkMode', value);
+            document.body.classList.toggle('dark-mode', eval(value));
+        },
+        setDarkModeChanged(state, value) {
+            localStorage.setItem('darkModeChanged', true);
+            this.commit('setDarkMode', value);
         }
     },
 });

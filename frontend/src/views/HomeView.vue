@@ -1,22 +1,23 @@
 <script>
 import LogoItem from '@/components/nav/LogoItem.vue';
+import ButtonItem from '@/components/others/ButtonItem.vue';
 
 export default {
 	name: 'HomeView',
 	mounted() {
 		this.$route.meta.title = 'Nuevo título para esta página';
 	},
-	components: { LogoItem }
+	components: { LogoItem, ButtonItem }
 }
 </script>
 
 <template>
 	<div class="home">
-		<button @click="$router.push('/login')">Go to Gallery</button>
+		<ButtonItem url="/login" title="Go to Gallery"/>
 		<div>
 			<LogoItem />
 			<p>Make your own gallery with<br/><span style="font-weight: bold">originality</span> and <span style="font-weight: bold">love</span></p>
-			<button @click="$router.push('/login')">Go to Gallery</button>
+			<ButtonItem url="/login" title="Go to Gallery"/>
 		</div>
 		<h6>CopyRight&nbsp;&nbsp;©&nbsp;&nbsp;<span style="font-weight: bold">Kograph</span>&nbsp;-&nbsp;2024</h6>
 		<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="649" height="857" viewBox="0 0 649 857" fill="none">
@@ -91,6 +92,10 @@ export default {
 	justify-content: space-between;
 }
 
+button {
+	margin-top: 18px;
+}
+
 .home > svg {
 	left: 0;
 	top: 0;
@@ -101,31 +106,6 @@ export default {
 	right: 0 !important;
 	top: 0 !important;
 	left: unset !important;
-}
-
-button {
-	margin-top: 18px;
-	user-select: none;
-	font-size: 18px;
-	cursor: pointer;
-	border: none;
-	padding: 12px 35px;
-	border-radius: 5px;
-	background-color: #318ba7;
-	color: white;
-	transition: all .1s ease-in-out;
-}
-
-button:hover {
-	background-color: #2a7b93;
-}
-
-body.dark-mode button {
-    background-color: #373737 !important;
-}
-
-body.dark-mode button:hover {
-    background-color: #484848 !important;
 }
 
 .home div {

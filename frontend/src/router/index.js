@@ -4,17 +4,22 @@ import store from '@/store'
 // Root
 import RootView from '@/views/RootView.vue'
 // Auth
-import LogIn from '@/views/auth/LogIn.vue'
-import SignUp from '@/views/auth/SignUp.vue'
+import ContainerSwitcher from '@/views/auth/ContainerSwitcher.vue'
+import RecoveryPassword from '@/views/auth/password/RecoveryPassword.vue'
+import ResetPassword from '@/views/auth/password/ResetPassword.vue'
+import ActivatedAccount from '@/views/auth/password/ActivatedAccount.vue'
 // Errors
 import NotFoundView from '@/views/errors/NotFoundView.vue'
 
-store.commit('initializeStore')
+store.commit('initializeStore');
 
 const routes = [
     { path: '/', component: RootView },
-    { path: '/login', component: LogIn },
-    { path: '/signup', component: SignUp },
+    { path: '/login', component: ContainerSwitcher },
+    { path: '/signup', component: ContainerSwitcher },
+    { path: '/recovery', component: RecoveryPassword },
+    { path: '/password/reset/confirm/:uid/:token', component: ResetPassword },
+    { path: '/activate/:uid/:token', component: ActivatedAccount },
     { path: '/:catchAll(.*)', component: NotFoundView },
 ]
 
@@ -37,4 +42,4 @@ router.beforeEach((to, from, next) => {
     }
 });
 
-export default router
+export default router;

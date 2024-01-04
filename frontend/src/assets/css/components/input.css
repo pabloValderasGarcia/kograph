@@ -1,15 +1,38 @@
-.input {
-    /* Box */
-    outline: none;
+input {
     border: none;
-    border-radius: 20px;
-    background-color: #ececec;
-    /* Text */
-    padding: 10px 25px;
-    font-size: 16px;
+    border-radius: 5px;
+    padding: 10px 12px;
+    background-color: #f2f2f2;
+    color: black;
+    box-shadow: none;
+    font-size: 14px;
+    caret-color: black;
 }
 
-body.dark-mode .input {
+input:-webkit-autofill:focus {
+    color: black !important;
+    box-shadow: inset 0 0 0 32px #f2f2f2, 0 0 0 2px #f2f2f2 !important;
+}
+
+input:-webkit-autofill {
+    color: black !important;
+    box-shadow: inset 0 0 0 32px #f2f2f2 !important;
+    -webkit-text-fill-color: black;
+}
+
+body.dark-mode input:-webkit-autofill:focus {
     color: white !important;
-    background-color: #373737 !important;
+    box-shadow: inset 0 0 0 32px #373737, 0 0 0 2px #373737 !important;
+}
+
+body.dark-mode input:-webkit-autofill {
+    color: white !important;
+    box-shadow: inset 0 0 0 32px #373737 !important;
+    -webkit-text-fill-color: white;
+}
+
+body.dark-mode input {
+    background-color: #373737;
+    color: white;
+    caret-color: white;
 }

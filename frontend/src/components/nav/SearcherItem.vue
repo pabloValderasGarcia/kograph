@@ -1,6 +1,4 @@
 <script>
-import '@/assets/css/components/input.css';
-
 export default {
     name: 'SearcherItem',
     data() {
@@ -55,5 +53,21 @@ export default {
     transform: translateY(-55%);
     opacity: .6;
     pointer-events: none;
+}
+
+.input {
+    /* Box */
+    outline: none;
+    border: none;
+    border-radius: 20px;
+    background-color: #ececec;
+    /* Text */
+    padding: 10px 25px;
+    font-size: 16px;
+}
+
+body.dark-mode .input {
+    color: white !important;
+    background-color: #373737 !important;
 }
 </style>

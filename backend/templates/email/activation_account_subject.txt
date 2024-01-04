@@ -1,0 +1,1 @@
+Subject: {% trans "Account Activation" %}
