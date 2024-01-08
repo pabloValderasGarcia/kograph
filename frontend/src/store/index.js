@@ -38,6 +38,8 @@ export default createStore({
         setDarkMode(state, value) {
             localStorage.setItem('darkMode', value);
             document.body.classList.toggle('dark-mode', eval(value));
+            this.darkMode = eval(value);
+            window.dispatchEvent(new Event('darkModeChanged'));
         },
         setDarkModeChanged(state, value) {
             localStorage.setItem('darkModeChanged', true);

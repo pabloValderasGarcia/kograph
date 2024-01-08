@@ -18,6 +18,12 @@ export default {
 	},
 	methods: {
 		recoveryPassword() {
+			notify({
+				group: 'foo',
+				title: 'Reset',
+				text: 'Trying to send email...',
+				type: 'info',
+			}, 2000);
 			axios.post(`${process.env.VUE_APP_SERVER_URL}/auth/users/reset_password/`, { email: this.email }).then(() => {
 				this.errorMessages = [];
 
@@ -131,14 +137,14 @@ export default {
 form {
 	width: 600px;
 	padding: 50px;
-	height: 100vh;
+	height: 100svb;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	margin: 0 auto;
 }
 
-form > *:not(:first-child, :last-child) {
+form>*:not(:first-child, :last-child) {
 	margin-bottom: 20px;
 }
 

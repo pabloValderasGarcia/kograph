@@ -1,12 +1,22 @@
+# | ---------------------------------------------------------------------- |
+# | ---------------------- IMPORTACIONES NECESARIAS ---------------------- |
+# | ---------------------------------------------------------------------- |
+
+from django.core.validators import RegexValidator, MinLengthValidator, MaxLengthValidator
+from django.contrib.auth.password_validation import validate_password
 from djoser.serializers import UserCreateSerializer
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from django.core.validators import RegexValidator, MinLengthValidator, MaxLengthValidator
-from django.core.exceptions import ValidationError
-from django.contrib.auth.password_validation import validate_password
+from api.models import File
 
-# Signup
+# | ------------------------------------------------------------------ |
+# | ---------------------- SERIALIZADOR USUARIO ---------------------- |
+# | ------------------------------------------------------------------ |
+
+# Serializador para la creación de usuario
 class CustomUserCreateSerializer(UserCreateSerializer):
+    # Validación email
     email = serializers.EmailField(
         required=True,
         validators=[
@@ -18,6 +28,7 @@ class CustomUserCreateSerializer(UserCreateSerializer):
             'unique': 'Email already registered.'
         }   
     )
+    # Validación usuario
     username = serializers.CharField(
         required=True, 
         validators=[
@@ -36,6 +47,7 @@ class CustomUserCreateSerializer(UserCreateSerializer):
             'unique': 'Username already registered.'
         }  
     )
+    # Validación contraseña
     password = serializers.CharField(
         required=True,
         validators=[
@@ -55,13 +67,17 @@ class CustomUserCreateSerializer(UserCreateSerializer):
         ],
         write_only=True,
     )
-
     class Meta(UserCreateSerializer.Meta):
         model = get_user_model()
         fields = ('id', 'email', 'username', 'password')
 
-# Change password
+# | --------------------------------------------------------------------- |
+# | ---------------------- SERIALIZADOR CONTRASEÑA ---------------------- |
+# | --------------------------------------------------------------------- |
+        
+# Serializador para comprobar contraseñas válidas de reseteo
 class PasswordResetSerializer(serializers.Serializer):
+    # Validación nueva contraseña
     new_password = serializers.CharField(
         required=True,
         validators=[
@@ -82,12 +98,14 @@ class PasswordResetSerializer(serializers.Serializer):
         write_only=True,
         style={'input_type': 'password'},
     )
+    # Validación contraseña confirmación
     re_new_password = serializers.CharField(
         required=True,
         write_only=True,
         style={'input_type': 'password'},
     )
 
+    # Validación de ambas contraseñas para efectuar la operación
     def validate(self, data):
         new_password = data.get('new_password')
         re_new_password = data.get('re_new_password')
@@ -103,3 +121,13 @@ class PasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError({'detail': e.messages})
 
         return data
+    
+# | ----------------------------------------------------------------- |
+# | ---------------------- SERIALIZADOR IMAGEN ---------------------- |
+# | ----------------------------------------------------------------- |
+
+# Serializador para el registro de archivos (imágenes, vídeos)
+class FileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = File
+        fields = '__all__'

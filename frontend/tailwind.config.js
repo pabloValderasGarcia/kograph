@@ -4,8 +4,13 @@ module.exports = {
     './public/**/*.html',
     './src/**/*.{js,jsx,ts,tsx,vue}',
   ],
+  darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      gridTemplateColumns: {
+        'mine': 'repeat(auto-fit, minmax(100px, 1fr))'
+      }
+    },
   },
   plugins: [],
 }

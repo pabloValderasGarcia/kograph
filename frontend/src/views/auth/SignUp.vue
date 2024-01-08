@@ -8,6 +8,7 @@ export default {
     name: 'SignUp',
     data() {
         return {
+            pageWidth: window.innerWidth,
             email: '',
             username: '',
             password: '',
@@ -26,6 +27,12 @@ export default {
             this.$router.push('/');
         }
     },
+    mounted() {
+		window.addEventListener('resize', this.handleResize);
+	},
+    beforeUnmount() {
+        window.removeEventListener('resize', this.handleResize);
+    },
     methods: {
         async submitForm() {
             notify({
@@ -42,6 +49,10 @@ export default {
                 };
 
                 await axios.post(`${process.env.VUE_APP_SERVER_URL}/auth/users/`, formData);
+
+                Object.keys(this.errorMessages).forEach(key => {
+                    this.errorMessages[key] = [];
+                });
 
                 notify({
                     group: 'foo',
@@ -67,6 +78,12 @@ export default {
                     }, 4000);
                     return;
                 } else {
+                    notify({
+                        group: 'foo',
+                        title: 'Error',
+                        text: 'User registration failed.',
+                        type: 'error',
+                    }, 4000);
                     const newErrorMessages = {};
                     let allFieldsRequired = false;
                     if (Array.isArray(error.response.data)) {
@@ -108,7 +125,10 @@ export default {
         },
         hideErrorMessages(key) {
             this.errorMessages[key] = [];
-        }
+        },
+        handleResize() {
+            this.pageWidth = window.innerWidth;
+        },
     },
     components: { ButtonItem, LogoItem }
 }
@@ -153,7 +173,12 @@ export default {
                 </div>
                 <input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" />
             </div>
-            <ButtonItem title="Sign Up" />
+            <p style="font-size: 14px" v-if="pageWidth <= 600">Have an account? <span style="cursor: pointer; color: #2f81f7" @click="this.$router.push('/login')">Log In</span></p>
+            <ButtonItem v-if="pageWidth > 600" title="Log In" />
+            <div class="buttons" v-if="pageWidth <= 600">
+                <ButtonItem type="button" @click="this.$router.push('/')" title="Home" />
+                <ButtonItem type="submit" title="Log In" />
+            </div>
         </form>
     </div>
 </template>
@@ -251,5 +276,19 @@ label {
     flex-direction: row;
     align-items: center;
     gap: 5px;
+}
+
+.buttons {
+	display: flex;
+	flex-direction: row;
+	gap: 12px;
+}
+
+.buttons > * {
+	flex: 1;
+}
+
+.buttons > button:nth-child(1) {
+	background-color: #468b46 !important;
 }
 </style>

@@ -10,6 +10,7 @@ export default {
 	name: 'LogIn',
 	data() {
 		return {
+			pageWidth: window.innerWidth,
 			username: '',
 			password: '',
 			showPassword: false,
@@ -22,6 +23,12 @@ export default {
 			this.$router.push('/');
 		}
 	},
+	mounted() {
+		window.addEventListener('resize', this.handleResize);
+	},
+    beforeUnmount() {
+        window.removeEventListener('resize', this.handleResize);
+    },
 	methods: {
 		submitForm() {
 			this.$store.commit('removeAccess');
@@ -72,7 +79,10 @@ export default {
 		},
 		hideErrorMessage() {
             this.errorMessage = '';
-        }
+        },
+		handleResize() {
+            this.pageWidth = window.innerWidth;
+        },
 	},
 	components: { ButtonItem, LogoItem }
 }
@@ -101,7 +111,12 @@ export default {
 				</div>
 				<input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" />
 			</div>
-			<ButtonItem title="Log In" />
+			<p style="font-size: 14px" v-if="pageWidth <= 600">Don't have an account? <span style="cursor: pointer; color: #2f81f7" @click="this.$router.push('/signup')">Sign up</span></p>
+			<ButtonItem v-if="pageWidth > 600" title="Log In" />
+			<div class="buttons" v-if="pageWidth <= 600">
+				<ButtonItem type="button" @click="this.$router.push('/')" title="Home" />
+				<ButtonItem type="submit" title="Log In" />
+			</div>
 		</form>
 	</div>
 </template>
@@ -189,5 +204,19 @@ form>div>div>p {
 
 label {
 	font-size: 14px;
+}
+
+.buttons {
+	display: flex;
+	flex-direction: row;
+	gap: 12px;
+}
+
+.buttons > * {
+	flex: 1;
+}
+
+.buttons > button:nth-child(1) {
+	background-color: #468b46 !important;
 }
 </style>

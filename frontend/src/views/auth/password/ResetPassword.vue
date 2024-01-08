@@ -186,7 +186,7 @@ export default {
 form {
 	width: 600px;
 	padding: 50px;
-	height: 100vh;
+	height: 100svb;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;

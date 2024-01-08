@@ -4,9 +4,23 @@ import ButtonItem from '@/components/others/ButtonItem.vue';
 
 export default {
 	name: 'HomeView',
+	data() {
+        return {
+            pageWidth: window.innerWidth
+        }
+    },
 	mounted() {
 		this.$route.meta.title = 'Nuevo título para esta página';
+		window.addEventListener('resize', this.handleResize);
 	},
+    beforeUnmount() {
+        window.removeEventListener('resize', this.handleResize);
+    },
+	methods: {
+        handleResize() {
+            this.pageWidth = window.innerWidth;
+        },
+    },
 	components: { LogoItem, ButtonItem }
 }
 </script>
@@ -20,7 +34,7 @@ export default {
 			<ButtonItem url="/login" title="Go to Gallery"/>
 		</div>
 		<h6>CopyRight&nbsp;&nbsp;©&nbsp;&nbsp;<span style="font-weight: bold">Kograph</span>&nbsp;-&nbsp;2024</h6>
-		<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="649" height="857" viewBox="0 0 649 857" fill="none">
+		<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="649" height="857" :viewBox="pageWidth > 600 ? '0 0 649 857' : '0 0 649 457'" fill="none">
 			<rect x="554.135" y="475.088" width="125.935" height="121.829" rx="20" transform="rotate(41.3083 554.135 475.088)" fill="#4CB5E2"/>
 			<rect x="74.3135" y="291" width="101.1" height="97.8035" rx="20" transform="rotate(15 74.3135 291)" fill="#4CBEE2"/>
 			<path d="M206.621 497.87C206.282 493.263 211.056 490.017 215.215 492.026L281.105 523.852C285.264 525.861 285.688 531.619 281.869 534.216L221.361 575.365C217.542 577.963 212.343 575.452 212.004 570.845L206.621 497.87Z" fill="#58D290"/>
@@ -85,7 +99,7 @@ export default {
 <style scoped>
 .home {
 	padding: 0 25px;
-	height: 100vh;
+	height: 100dvb;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -134,6 +148,13 @@ h6 {
 	display: none;
 }
 
+@media screen and (max-width: 1600px) {
+	.home > svg {
+		z-index: -1;
+		max-width: 35%;
+	}
+}
+
 @media screen and (max-width: 1000px) {
 	button {
 		visibility: hidden;
@@ -163,10 +184,14 @@ h6 {
 		display: none !important;
 	}
 }
-@media screen and (max-width: 1600px) {
+
+@media screen and (max-width: 600px) {
+	.home {
+		padding: 0 20px;
+	}
 	.home > svg {
-		z-index: -1;
-		max-width: 35%;
+		width: 100%;
+		height: 220px;
 	}
 }
 </style>

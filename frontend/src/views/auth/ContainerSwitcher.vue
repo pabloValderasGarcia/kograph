@@ -41,18 +41,20 @@ export default {
             </transition>
         </div>
         <div class="otherside" :class="isLogIn ? '' : 'otherside_signup'">
-        <img class="svg" src="@/assets/svg/login/login.svg"/>
-        <section>
-            <p>{{ isLogIn ? 'It\'s Never Too Late. Sign Up!' : 'Welcome to Kograph' }}</p>
-            <div>
-                <ButtonItem @click="this.$router.push('/')" title='Home' />
-                <ButtonItem @click="handleSwitchContainer" :title="isLogIn ? 'Sign Up' : 'Log In'" />
-            </div>
-        </section>
+            <img class="svg" src="@/assets/svg/login/login.svg" />
+            <section>
+                <p>{{ isLogIn ? 'It\'s Never Too Late' : 'Welcome to Kograph' }}</p>
+                <div>
+                    <ButtonItem @click="this.$router.push('/')" title='Home' />
+                    <ButtonItem @click="handleSwitchContainer" :title="isLogIn ? 'Sign Up' : 'Log In'" />
+                </div>
+            </section>
+        </div>
     </div>
-</div></template>
+</template>
 
-<style scoped>.fade-enter-active,
+<style scoped>
+.fade-enter-active,
 .fade-leave-active {
     transition: all 0.2s ease-in-out;
 }
@@ -67,7 +69,7 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 50%;
+    width: 70%;
     transition-property: transform;
     transition-duration: 500ms;
     transition-timing-function: ease-in-out;
@@ -131,11 +133,11 @@ body.dark-mode .otherside {
 
 @media screen and (min-width: 768px) {
     .formside {
-        height: 100vh;
+        height: 100svb;
     }
 
     .otherside {
-        height: 100vh;
+        height: 100svb;
     }
 }
 
@@ -166,7 +168,7 @@ body.dark-mode .otherside {
         flex-direction: column-reverse;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+        height: 100svb;
     }
 
     .formside {
@@ -180,5 +182,11 @@ body.dark-mode .otherside {
 
     .form_control {
         width: 80%;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .formside {
+        width: 110%;
     }
 }</style>

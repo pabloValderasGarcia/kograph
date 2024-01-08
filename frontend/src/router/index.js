@@ -17,7 +17,12 @@ const routes = [
     { path: '/', component: RootView },
     { path: '/login', component: ContainerSwitcher },
     { path: '/signup', component: ContainerSwitcher },
-    { path: '/recovery', component: RecoveryPassword },
+    {
+        path: '/recovery', component: RecoveryPassword, beforeEnter: (to, from, next) => {
+            if (from.name === null || from.path === '/login') next();
+            else next('/login');
+        }
+    },
     { path: '/password/reset/confirm/:uid/:token', component: ResetPassword },
     { path: '/activate/:uid/:token', component: ActivatedAccount },
     { path: '/:catchAll(.*)', component: NotFoundView },

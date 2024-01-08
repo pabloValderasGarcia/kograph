@@ -50,8 +50,13 @@ INSTALLED_APPS = [
     'api'
 ]
 
+SETTINGS_PATH = os.path.dirname(os.path.dirname(__file__))
+
 # Mine -----------
 
+BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:8081")
+
+# Gestión mía de Django (número máximo de peticiones..., token JWT)
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -62,14 +67,16 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '10/minute',
-        'user': '100/hour',
+        'user': '10000/hour',
     },
 }
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=2592000)
 }
-BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:8081")
+AUTH_USER_MODEL = 'api.User'
+
+# Gestión de DJOSER (librería para gestión de usuarios)
 DJOSER = {
     'SERIALIZERS': {
         'user_create': 'backend.serializers.CustomUserCreateSerializer'
@@ -83,11 +90,8 @@ DJOSER = {
     'SEND_ACTIVATION_EMAIL': True,
     'LOGIN_AFTER_ACTIVATION': True,
 }
-CORS_ALLOW_ALL_ORIGINS = True
-CSRF_COOKIE_SECURE = False
 
-AUTH_USER_MODEL = 'api.User'
-
+# Gestión de EMAIL
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -95,6 +99,15 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'pvalgarn@gmail.com'
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_APP_KEY")
 
+# Gestión de archivos
+MEDIA_URL = '/media/'
+STATIC_URL = '/static/'
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True
+CSRF_COOKIE_SECURE = False
+
+# Caché
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -116,7 +129,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'
-SETTINGS_PATH = os.path.dirname(os.path.dirname(__file__))
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
