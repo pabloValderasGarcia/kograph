@@ -7,6 +7,7 @@ from django.contrib.auth.tokens import default_token_generator
 from rest_framework.parsers import MultiPartParser, FormParser
 from djoser.serializers import PasswordResetConfirmSerializer
 from django.contrib.auth.decorators import login_required
+from moviepy.video.io.VideoFileClip import VideoFileClip
 from backend.serializers import PasswordResetSerializer
 from templated_mail.mail import BaseEmailMessage
 from rest_framework.permissions import AllowAny
@@ -17,13 +18,20 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404, FileResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .apps import rekognition_client
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status
 from djoser.conf import settings
-from decouple import config
-from .models import File
+from .models import Album, File
+from datetime import timedelta
 from djoser import utils
+import backend.settings
+from io import BytesIO
+import numpy as np
+import imageio
+import uuid
+import re
 import os
 
 # Obtener información sobre los métodos HTTP
@@ -31,16 +39,6 @@ import os
 @permission_classes([AllowAny])
 def options_view():
     return Response()
-
-# | --------------------------------------------------------------------------- |
-# | ---------------------- AWS (INTELIGENCIA ARTIFICIAL) ---------------------- |
-# | --------------------------------------------------------------------------- |
-
-# AWS Credenciales
-aws_access_key_id = config('aws_access_key_id')
-aws_secret_access_key = config('aws_secret_access_key')
-aws_session_token = config('aws_session_token')
-aws_region = config('aws_region')
 
 # | ---------------------------------------------------------------- |
 # | ---------------------- EMAIL Y CONTRASEÑA ---------------------- |
@@ -73,13 +71,13 @@ class PasswordResetEmail(BaseEmailMessage):
         # Obtención de parámetros necesarios para el mensaje del correo
         user = context.get("user")
         user_id = user.pk
-
+        
         # Verificar que el correo ya ha sido enviado para evitar ataques DDoS
         last_reset_email_time = cache.get(f'reset_email_sent_{user_id}')
         if last_reset_email_time:
             time_difference = timezone.now() - last_reset_email_time
             if time_difference.total_seconds() < 300:
-                raise Throttled(detail='Please, wait approximately 5 minutes from your last request.')
+                raise Throttled(detail='Please, wait approximately 5 minutes from your last sended email.')
         
         # Obtención de parámetros necesarios para el mensaje del correo
         context["uid"] = utils.encode_uid(user.pk)
@@ -165,29 +163,93 @@ class ValidateLinkView(APIView):
         else:
             return Response({'detail': 'Invalid reset link.'}, status=status.HTTP_400_BAD_REQUEST)
         
-# | -------------------------------------------------------------------------------- |
-# | ---------------------- MANEJO DE FICHEROS (imagen, vídeo) ---------------------- |
-# | -------------------------------------------------------------------------------- |
+# | -------------------------------------------------------------- |
+# | ---------------------- MANEJO DE ALBUMS ---------------------- |
+# | -------------------------------------------------------------- |
         
-# Vista para subir archivo
-class UploadFile(APIView):
+# Vista para conseguir álbums
+class GetAlbums(APIView):
+    def get(self, request):
+        # Iniciamos variables necesarias
+        user_id = request.user.id
+        user_albums = Album.objects.filter(user_id=user_id)
+        serializer = FileSerializer(user_albums, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# Vista para crear álbum
+class CreateAlbum(APIView):
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
         # Iniciamos variables necesarias
         user_id = str(request.user.id)
         file_data = request.FILES.get('file')
-        title = request.data.get('title')
-        serializer = FileSerializer(data={'user': user_id, 'file': file_data, 'title': title})
+        title = str(request.data.get('title')) + '_' + str(uuid.uuid1())
+        type = request.data.get('type')
+        origin_created_at = request.data.get('origin_created_at')
 
+        # Verificamos si el archivo es una imágen/vídeo y no es duplicado
+        existing_files = File.objects.filter(user=request.user)
+        new_file_data = file_data.read()
+        for existing_file in existing_files:
+            if existing_file.is_duplicate(new_file_data):
+                return Response({'detail': 'File is a duplicate and cannot be uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        serializer = FileSerializer(data={'user': user_id, 'file': file_data, 'title': title, 'type': type, 'origin_created_at': origin_created_at})
+        
         # Verificamos que sea válido
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'detail': 'Image uploaded successfully.'}, status=status.HTTP_201_CREATED)
+        if serializer.is_valid() and (type == 'video' or type == 'image'):
+            file_instance = serializer.save()
+
+            # Creación de miniatura en caso de vídeo
+            if type == 'video':
+                # Reemplazamos los demás caractéres por ''
+                file_basename = os.path.basename(re.sub(r'[^\w.\s-]', '', file_data.name))
+
+                # Reemplazamos espacios por '_'
+                file_basename = re.sub(r'\s', '_', file_basename)
+                file_path = os.path.join(backend.settings.BASE_DIR, 'files', file_basename)
+
+                # Generamos el thumbnail del fichero
+                thumbnail_path = generate_thumbnail(file_instance, file_path, file_basename)
+
+                # Actualizamos el fichero con el campo thumbnail
+                file_instance = File.objects.get(title=title)
+                file_instance.thumbnail = thumbnail_path
+                file_instance.save()
+
+            return Response({'detail': 'File/s uploaded successfully.'}, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Vista para eliminar álbums según ids
+class DeleteAlbum(APIView):
+    def post(self, request, *args, **kwargs):
+        # Recogemos los ids
+        album_ids = request.data.get('album_ids', [])
         
-# Vista para conseguir imagen de forma privada (en producción)
+        # Verificamos que existan ids
+        if not album_ids:
+            return Response({'detail': 'No file IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Filtra los archivos a eliminar por IDs
+            albums_to_delete = Album.objects.filter(id__in=album_ids)
+            for album in albums_to_delete:
+                # Elimina el archivo
+                album.delete()
+
+            return Response({'detail': 'Album/s deleted successfully'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        
+# | -------------------------------------------------------------------------------- |
+# | ---------------------- MANEJO DE FICHEROS (imagen, vídeo) ---------------------- |
+# | -------------------------------------------------------------------------------- |
+
+# Función para conseguir imagen de forma privada (en producción)
 @login_required
 def serve_protected_file(request, file_path):
     print('a')
@@ -209,11 +271,186 @@ def serve_protected_file(request, file_path):
 
     return response
         
-# Vista para conseguir todas las imágenes (ALL)
-class AllImages(APIView):
+# Vista para conseguir ficheros
+class GetFiles(APIView):
     def get(self, request):
         # Iniciamos variables necesarias
         user_id = request.user.id
-        user_images = File.objects.filter(user_id=user_id)
-        serializer = FileSerializer(user_images, many=True)
+        user_files = File.objects.filter(user_id=user_id)
+        serializer = FileSerializer(user_files, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+# Vista para subir archivo
+class UploadFile(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        # Iniciamos variables necesarias
+        user_id = str(request.user.id)
+        file_data = request.FILES.get('file')
+        title = str(request.data.get('title')) + '_' + str(uuid.uuid1())
+        type = request.data.get('type')
+        origin_created_at = request.data.get('origin_created_at')
+
+        # Verificamos si el archivo es una imágen/vídeo y no es duplicado
+        existing_files = File.objects.filter(user=request.user)
+        new_file_data = file_data.read()
+        for existing_file in existing_files:
+            if existing_file.is_duplicate(new_file_data):
+                return Response({'detail': 'File is a duplicate and cannot be uploaded.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        serializer = FileSerializer(data={'user': user_id, 'file': file_data, 'title': title, 'type': type, 'origin_created_at': origin_created_at})
+        
+        # Verificamos que sea válido
+        if serializer.is_valid() and (type == 'video' or type == 'image'):
+            file_instance = serializer.save()
+
+            # Creación de miniatura en caso de vídeo
+            if type == 'video':
+                # Reemplazamos los demás caractéres por ''
+                file_basename = os.path.basename(re.sub(r'[^\w.\s-]', '', file_data.name))
+
+                # Reemplazamos espacios por '_'
+                file_basename = re.sub(r'\s', '_', file_basename)
+                file_path = os.path.join(backend.settings.BASE_DIR, 'files', file_basename)
+
+                # Generamos el thumbnail del fichero
+                thumbnail_path = generate_thumbnail(file_instance, file_path, file_basename)
+
+                # Actualizamos el fichero con el campo thumbnail
+                file_instance = File.objects.get(title=title)
+                file_instance.thumbnail = thumbnail_path
+                file_instance.save()
+
+            return Response({'detail': 'File/s uploaded successfully.'}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+# Función para generar una miniatura de un vídeo
+def generate_thumbnail(file_instance, video_path, video_basename):
+    try:
+        # Variables necesarias
+        clip = VideoFileClip(video_path)
+        thumbnail = clip.get_frame(0)
+        thumbnail_path = str(video_basename) + str(uuid.uuid4())
+
+        # Guardar la miniatura como imagen
+        thumbnail_dir = os.path.join(backend.settings.BASE_DIR, 'thumbnails')
+        if not os.path.exists(thumbnail_dir):
+            os.makedirs(thumbnail_dir)
+        thumbnail_path_full = os.path.join(thumbnail_dir, thumbnail_path + ".png")
+        imageio.imwrite(thumbnail_path_full, np.uint8(thumbnail))
+
+        # Guardar la duración del vídeo
+        file_instance.duration = timedelta(seconds=int(clip.duration))
+        file_instance.save()
+
+        return thumbnail_path
+    except Exception as e:
+        print(f"Error generating thumbnail: {str(e)}")
+        return None
+
+# Vista para eliminar ficheros según su id
+class DeleteFile(APIView):
+    def post(self, request, *args, **kwargs):
+        # Recogemos los ids
+        file_ids = request.data.get('file_ids', [])
+        
+        # Verificamos que existan ids
+        if not file_ids:
+            return Response({'detail': 'No file IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Filtra los archivos a eliminar por IDs
+            files_to_delete = File.objects.filter(id__in=file_ids)
+            for file in files_to_delete:
+                # Elimina el archivo
+                file.delete()
+
+            return Response({'detail': 'File/s deleted successfully'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# Vista para encontrar ficheros con caras iguales
+class SearchPerson(APIView):
+    def post(self, request):
+        user_id = request.user.id
+        user_files = File.objects.filter(user_id=user_id)
+
+        # Verificar que el objeto rekognition_client esté configurado
+        if rekognition_client is None:
+            return Response({'detail': 'Rekognition client not configured.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Obtener la información de las caras en el archivo objetivo
+        file = request.FILES['files']
+        file_bytes = file.read()
+
+        # Buscar archivos que coincidan con las caras de file_target
+        matching_files = find_matching_files(user_files, file_bytes)
+
+        # Serializar y devolver la lista de archivos coincidentes
+        matching_serializer = FileSerializer(matching_files, many=True)
+        return Response(matching_serializer.data, status=status.HTTP_200_OK)
+    
+# Función para conseguir la información importante de cada cara de un fichero
+def get_faces_info(file):
+    try:
+        # Utilizar rekognition_client para obtener información sobre las caras en el archivo
+        response = rekognition_client.detect_faces(
+            Image={
+                'Bytes': file.read()
+            },
+            Attributes=['ALL']
+        )
+                
+        # Extraer información relevante sobre las caras
+        faces_info = []
+        for face_detail in response['FaceDetails']:
+            face_info = {
+                'BoundingBox': face_detail['BoundingBox'],
+                'Confidence': face_detail['Confidence'],
+            }
+            faces_info.append(face_info)
+
+        return faces_info
+
+    except Exception as e:
+        print(e)
+        return None
+
+# Función para conseguir los ficheros donde aparecen caras de un fichero
+def find_matching_files(user_files, file_bytes):
+    matching_files = []
+
+    if not file_bytes:
+        return Response({'detail': 'Invalid target image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    for file in user_files:
+        file_faces_info = get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
+        print(file_faces_info)
+
+        if file_faces_info is not None and len(file_faces_info) > 0:
+            # Obtenemos bytes del fichero
+            file_image_bytes = file.file.read()
+            
+            try:
+                # Utilizar rekognition_client para comparar las caras usando compare_faces
+                comparison_response = rekognition_client.compare_faces(
+                    TargetImage={
+                        'Bytes': file_bytes
+                    },
+                    SourceImage={
+                        'Bytes': file_image_bytes
+                    },
+                    SimilarityThreshold=10.0
+                )
+
+                # Verificar si hay coincidencias
+                if any(match['Similarity'] >= 10.0 for match in comparison_response['FaceMatches']):
+                    matching_files.append(file)
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                return None
+
+            return matching_files

@@ -69,7 +69,7 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 70%;
+    width: 50%;
     transition-property: transform;
     transition-duration: 500ms;
     transition-timing-function: ease-in-out;

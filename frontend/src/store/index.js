@@ -6,7 +6,13 @@ export default createStore({
         access: '',
         refresh: '',
         user: null,
-        darkMode: true
+        darkMode: true,
+        // Ficheros
+        isDragging: false,
+        isLoading: false,
+        files: [],
+        filesData: [],
+        selectedFiles: [],
     },
     mutations: {
         initializeStore(state) {
@@ -25,6 +31,33 @@ export default createStore({
             state.refresh = refresh;
             localStorage.setItem('refresh', refresh);
         },
+        setDarkMode(state, value) {
+            localStorage.setItem('darkMode', value);
+            document.body.classList.toggle('dark-mode', eval(value));
+            this.darkMode = eval(value);
+            window.dispatchEvent(new Event('darkModeChanged'));
+        },
+        setDarkModeChanged(state, value) {
+            localStorage.setItem('darkModeChanged', true);
+            this.commit('setDarkMode', value);
+        },
+        // Ficheros
+        setIsDragging(state, value) {
+            state.isDragging = value;
+        },
+        setIsLoading(state, value) {
+            state.isLoading = value;
+        },
+        setFiles(state, files) {
+            state.files = files;
+        },
+        setFilesData(state, filesData) {
+            state.filesData = filesData;
+        },
+        setSelectedFiles(state, selectedFiles) {
+            state.selectedFiles = selectedFiles;
+        },
+        // REMOVE
         removeAccess(state) {
             state.access = '';
             state.refresh = '';
@@ -35,15 +68,5 @@ export default createStore({
             localStorage.setItem('darkModeChanged', false);
             delete axios.defaults.headers.common['Authorization'];
         },
-        setDarkMode(state, value) {
-            localStorage.setItem('darkMode', value);
-            document.body.classList.toggle('dark-mode', eval(value));
-            this.darkMode = eval(value);
-            window.dispatchEvent(new Event('darkModeChanged'));
-        },
-        setDarkModeChanged(state, value) {
-            localStorage.setItem('darkModeChanged', true);
-            this.commit('setDarkMode', value);
-        }
     },
 });

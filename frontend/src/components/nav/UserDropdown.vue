@@ -11,6 +11,7 @@ export default {
     },
     methods: {
         logout() {
+            if (document.getElementById('uploaded_alert')) document.getElementById('uploaded_alert').remove();
             this.$store.commit('removeAccess');
             this.$nextTick(() => {
                 this.$router.push('/');

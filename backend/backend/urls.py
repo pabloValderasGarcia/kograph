@@ -2,7 +2,7 @@
 # | ---------------------- IMPORTACIONES NECESARIAS ---------------------- |
 # | ---------------------------------------------------------------------- |
 
-from api.views import options_view, UploadFile, serve_protected_file, AllImages, ValidateLinkView, CheckEmail, PasswordResetView
+from api.views import options_view, GetAlbums, CreateAlbum, DeleteAlbum, GetFiles, UploadFile, DeleteFile, SearchPerson, ValidateLinkView, CheckEmail, PasswordResetView
 from django.conf.urls.static import static
 from django.urls import path, include
 from django.contrib import admin
@@ -16,9 +16,15 @@ urlpatterns = [
     # ADMIN y OPTIONS
     path('admin/', admin.site.urls),
     path('options/', options_view),
-    # IMAGE
+    # ALBUM
+    path('album/get/', GetAlbums.as_view(), name='get_albums'),
+    path('album/create/', UploadFile.as_view(), name='create_album'),
+    path('album/delete/', DeleteFile.as_view(), name='delete_album'),
+    # FILE
+    path('file/get/', GetFiles.as_view(), name='get_files'),
     path('file/upload/', UploadFile.as_view(), name='upload_file'),
-    path('file/get_all/', AllImages.as_view(), name='all_images'),
+    path('file/delete/', DeleteFile.as_view(), name='delete_file'),
+    path('file/search_person/', SearchPerson.as_view(), name='search_person'),
     # EMAIL
     path('validate_link/', ValidateLinkView.as_view(), name='validate_link'),
     path('auth/users/check_email/', CheckEmail.as_view(), name='check_email'),

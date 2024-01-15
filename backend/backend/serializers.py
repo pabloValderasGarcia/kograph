@@ -8,7 +8,7 @@ from djoser.serializers import UserCreateSerializer
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from api.models import File
+from api.models import Album, File
 
 # | ------------------------------------------------------------------ |
 # | ---------------------- SERIALIZADOR USUARIO ---------------------- |
@@ -123,8 +123,14 @@ class PasswordResetSerializer(serializers.Serializer):
         return data
     
 # | ----------------------------------------------------------------- |
-# | ---------------------- SERIALIZADOR IMAGEN ---------------------- |
+# | ---------------------- SERIALIZADOR FICHEROS ---------------------- |
 # | ----------------------------------------------------------------- |
+
+# Serializador para el registro de álbumes
+class AlbumSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Album
+        fields = '__all__'
 
 # Serializador para el registro de archivos (imágenes, vídeos)
 class FileSerializer(serializers.ModelSerializer):

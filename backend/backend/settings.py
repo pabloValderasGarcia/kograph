@@ -100,8 +100,8 @@ EMAIL_HOST_USER = 'pvalgarn@gmail.com'
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_APP_KEY")
 
 # Gestión de archivos
-MEDIA_URL = '/media/'
-STATIC_URL = '/static/'
+# MEDIA_URL = '/media/'
+# STATIC_URL = '/static/'
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True

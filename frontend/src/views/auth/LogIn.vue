@@ -100,7 +100,6 @@ export default {
 				<label for="username">Username or email address</label>
 				<input v-model="username" id="username" name="username" autocomplete="username"/>
 			</div>
-			<!-- <input v-model="password" type="password" placeholder="Password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$" @invalid="handleInvalidField" required /> -->
 			<div>
 				<div>
 					<div class="label_password">

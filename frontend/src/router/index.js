@@ -13,8 +13,18 @@ import NotFoundView from '@/views/errors/NotFoundView.vue'
 
 store.commit('initializeStore');
 
+// Rutas
 const routes = [
+    // APP
     { path: '/', component: RootView },
+    { path: '/all', component: RootView, meta: { url: 'All' } },
+    { path: '/albums', component: RootView, meta: { url: 'Albums' } },
+    { path: '/ai', component: RootView, meta: { url: 'AI Powered' } },
+    { path: '/favorites', component: RootView, meta: { url: 'Favorites' } },
+    { path: '/shared', component: RootView, meta: { url: 'Shared' } },
+    { path: '/private', component: RootView, meta: { url: 'Private' } },
+    { path: '/settings', component: RootView, meta: { url: 'Settings' } },
+    // AUTH
     { path: '/login', component: ContainerSwitcher },
     { path: '/signup', component: ContainerSwitcher },
     {
@@ -28,23 +38,15 @@ const routes = [
     { path: '/:catchAll(.*)', component: NotFoundView },
 ]
 
-const router = createRouter({
-    history: createWebHistory(process.env.BASE_URL),
-    routes
-})
+const router = createRouter({ history: createWebHistory(process.env.BASE_URL), routes })
 
+// Redireccionamos a login si se requiere autenticación en x ruta
 router.beforeEach((to, from, next) => {
     if (to.matched.some(record => record.meta.requiresAuth)) {
         const token = store.state.access;
-        console.log(token);
-        if (token === '') {
-            next('/login');
-        } else {
-            next();
-        }
-    } else {
-        next();
-    }
+        if (token === '') next('/login');
+        else next();
+    } else next();
 });
 
 export default router;
