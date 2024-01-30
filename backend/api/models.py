@@ -63,7 +63,7 @@ class File(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     album = models.ForeignKey(Album, related_name='files', on_delete=models.CASCADE, blank=True, null=True)
     file = models.FileField(upload_to='files/')
-    title = models.CharField(max_length=255, unique=True)
+    title = models.CharField(max_length=255)
     description = models.TextField(max_length=500, blank=True, null=True)
     type = models.CharField(max_length=50, default='image')
     thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)

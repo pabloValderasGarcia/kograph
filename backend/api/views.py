@@ -9,6 +9,7 @@ from djoser.serializers import PasswordResetConfirmSerializer
 from django.contrib.auth.decorators import login_required
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from backend.serializers import PasswordResetSerializer
+from rest_framework.generics import UpdateAPIView
 from templated_mail.mail import BaseEmailMessage
 from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import Throttled
@@ -28,6 +29,7 @@ from datetime import timedelta
 from djoser import utils
 import backend.settings
 from io import BytesIO
+from PIL import Image
 import numpy as np
 import imageio
 import uuid
@@ -288,7 +290,7 @@ class UploadFile(APIView):
         # Iniciamos variables necesarias
         user_id = str(request.user.id)
         file_data = request.FILES.get('file')
-        title = str(request.data.get('title')) + '_' + str(uuid.uuid1())
+        title = request.data.get('title')
         type = request.data.get('type')
         origin_created_at = request.data.get('origin_created_at')
 
@@ -318,7 +320,6 @@ class UploadFile(APIView):
                 thumbnail_path = generate_thumbnail(file_instance, file_path, file_basename)
 
                 # Actualizamos el fichero con el campo thumbnail
-                file_instance = File.objects.get(title=title)
                 file_instance.thumbnail = thumbnail_path
                 file_instance.save()
 
@@ -393,27 +394,76 @@ class SearchPerson(APIView):
         matching_serializer = FileSerializer(matching_files, many=True)
         return Response(matching_serializer.data, status=status.HTTP_200_OK)
     
-# Función para conseguir la información importante de cada cara de un fichero
-def get_faces_info(file):
+# Función para comprimir una imagen
+def compress_image(image_bytes, quality=85):
     try:
-        # Utilizar rekognition_client para obtener información sobre las caras en el archivo
-        response = rekognition_client.detect_faces(
-            Image={
-                'Bytes': file.read()
-            },
-            Attributes=['ALL']
-        )
-                
-        # Extraer información relevante sobre las caras
-        faces_info = []
-        for face_detail in response['FaceDetails']:
-            face_info = {
-                'BoundingBox': face_detail['BoundingBox'],
-                'Confidence': face_detail['Confidence'],
-            }
-            faces_info.append(face_info)
+        # Abrir la imagen desde bytes
+        image = Image.open(BytesIO(image_bytes))
 
-        return faces_info
+        # Convertir la imagen a modo de color RGB si es RGBA
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+
+        # Crear un buffer para la imagen comprimida
+        compressed_image_buffer = BytesIO()
+
+        # Guardar la imagen comprimida en el buffer
+        image.save(compressed_image_buffer, format='JPEG', quality=quality)
+
+        # Obtener los bytes de la imagen comprimida
+        compressed_image_bytes = compressed_image_buffer.getvalue()
+
+        return compressed_image_bytes
+
+    except Exception as e:
+        print(e)
+        return None
+    
+# Función para conseguir la información importante de cada cara de un fichero
+def get_faces_info(file_path):
+    try:
+        with open(file_path, 'rb') as file:
+            # Comprimir la imagen antes de enviarla
+            compressed_image_bytes = compress_image(file.read())
+            
+            # Utilizar rekognition_client para obtener información sobre las caras en el archivo
+            response = rekognition_client.detect_faces(
+                Image={
+                    'Bytes': compressed_image_bytes
+                },
+                Attributes=['ALL']
+            )
+                    
+            # Extraer información relevante sobre las caras
+            faces_info = []
+            for face_detail in response['FaceDetails']:
+                face_info = {
+                    'BoundingBox': face_detail['BoundingBox'],
+                    'Confidence': face_detail['Confidence'],
+                }
+                faces_info.append(face_info)
+
+            return faces_info
+
+    except Exception as e:
+        print(e)
+        return None
+    
+# Función para conseguir etiquetas de una imagen
+def get_labels(file_path):
+    try:
+        with open(file_path, 'rb') as file:
+            # Comprimir la imagen antes de enviarla
+            compressed_image_bytes = compress_image(file.read())
+            
+            # Utilizar rekognition_client para obtener etiquetas
+            response = rekognition_client.detect_labels(
+                Image={
+                    'Bytes': compressed_image_bytes
+                }
+            )
+                    
+            return response['Labels']
 
     except Exception as e:
         print(e)
@@ -428,7 +478,6 @@ def find_matching_files(user_files, file_bytes):
 
     for file in user_files:
         file_faces_info = get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
-        print(file_faces_info)
 
         if file_faces_info is not None and len(file_faces_info) > 0:
             # Obtenemos bytes del fichero
@@ -454,3 +503,57 @@ def find_matching_files(user_files, file_bytes):
                 return None
 
             return matching_files
+        
+# Vista para eliminar ficheros según su id
+class ShowFile(APIView):
+    def get(self, request, *args, **kwargs):
+        # Recogemos el id
+        file_id = self.kwargs.get('file_id')
+        
+        # Verificamos que exista el id
+        if not file_id:
+            return Response({'detail': 'No file ID provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar que el objeto rekognition_client esté configurado
+        if rekognition_client is None:
+            return Response({'detail': 'Rekognition client not configured.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            # Conseguimos y devolvemos el fichero
+            file = File.objects.get(id=file_id)
+            serializer = FileSerializer(file)
+            data = serializer.data.copy()
+            if self.request.query_params.get('aws'):
+                data['aws'] = {
+                    'faces': get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file))),
+                    'labels': get_labels(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
+                }
+            return Response(data, status=status.HTTP_200_OK)
+
+        except File.DoesNotExist:
+            return Response({'detail': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class UpdateFile(UpdateAPIView):
+    queryset = File.objects.all()
+    serializer_class = FileSerializer
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Obtener el campo y el nuevo valor desde los datos de la solicitud
+        property = request.data.get('property')
+        value = request.data.get('value')
+
+        # Validar si el campo existe en el modelo
+        if not hasattr(instance, property):
+            return Response({'detail': 'Invalid field to update.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Actualizar el campo y guardar la instancia
+        setattr(instance, property, value)
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

@@ -46,7 +46,7 @@ export default {
     box-sizing: border-box;
     outline: none;
     border: none;
-    border-radius: 20px;
+    border-radius: 20px !important;
     background-color: #ececec;
     padding: 10px 25px 10px 50px;
     font-size: 16px;

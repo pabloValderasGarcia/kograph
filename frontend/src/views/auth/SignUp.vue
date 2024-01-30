@@ -38,7 +38,7 @@ export default {
             notify({
                 group: 'foo',
                 title: 'Signup',
-                text: 'Trying to register...',
+                text: 'Trying to register... Please, wait.',
                 type: 'info',
             }, 2000);
             try {
@@ -49,7 +49,7 @@ export default {
                 };
 
                 await axios.post(`${process.env.VUE_APP_SERVER_URL}/auth/users/`, formData);
-
+                
                 Object.keys(this.errorMessages).forEach(key => {
                     this.errorMessages[key] = [];
                 });
@@ -59,7 +59,7 @@ export default {
                     title: 'Activate Account',
                     text: 'We have sent you an activation email. Click the link to activate your account',
                     type: 'info',
-                }, 8000);
+                }, -1);
 
                 this.$router.push('/login');
                 notify({
@@ -69,6 +69,7 @@ export default {
                     type: 'success',
                 }, 4000);
             } catch (error) {
+                console.log(error)
                 if (error.response.status === 429) {
                     notify({
                         group: "foo",
@@ -159,11 +160,11 @@ export default {
             </div>
             <div class="form_input">
                 <label for="email">Email address</label>
-                <input v-model="email" id="email" type="email" />
+                <input v-model="email" id="email" type="email" required/>
             </div>
             <div class="form_input">
                 <label for="username">Username</label>
-                <input v-model="username" id="username" />
+                <input v-model="username" id="username" required/>
             </div>
             <div class="form_input">
                 <div class="label_password">
@@ -171,7 +172,7 @@ export default {
                     <font-awesome-icon icon="eye" :class="!password ? 'password_hidden' : ''"
                         @click.prevent="toggleShowPassword" />
                 </div>
-                <input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" />
+                <input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" required/>
             </div>
             <p style="font-size: 14px" v-if="pageWidth <= 600">Have an account? <span style="cursor: pointer; color: #2f81f7" @click="this.$router.push('/login')">Log In</span></p>
             <ButtonItem v-if="pageWidth > 600" title="Log In" />

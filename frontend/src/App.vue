@@ -56,14 +56,14 @@ export default {
             <div class="z-[99999] fixed inset-0 flex items-end justify-end p-6 px-4 py-6 pointer-events-none">
                 <div class="w-full">
                     <!-- ALERTS -->
-                    <Notification v-slot="{ notifications }" enter="transform ease-out duration-300 transition"
+                    <Notification v-slot="{ notifications, close }" enter="transform ease-out duration-300 transition"
                         enter-from="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-4"
                         enter-to="translate-y-0 opacity-100 sm:translate-x-0" leave="transition ease-in duration-500"
                         leave-from="opacity-100" leave-to="opacity-0" move="transition duration-500" move-delay="delay-300">
                         <div v-for="notification in notifications" :key="notification.id">
                             <!-- INFO -->
                             <div v-if="notification.type === 'info'"
-                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto">
+                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto relative">
                                 <div class="flex items-center justify-center px-4 bg-blue-500">
                                     <font-awesome-icon icon="circle-info" class="text-white" />
                                 </div>
@@ -73,10 +73,11 @@ export default {
                                         <p class="text-sm text-gray-600 leading-4 mt-1">{{ notification.text }}</p>
                                     </div>
                                 </div>
+                                <font-awesome-icon @click="close(notification.id)" icon="xmark" class="text-black absolute top-2 right-3 cursor-pointer" />
                             </div>
                             <!-- SUCCESS -->
                             <div v-if="notification.type === 'success'"
-                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto">
+                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto relative">
                                 <div class="flex items-center justify-center px-4 bg-green-500">
                                     <font-awesome-icon icon="circle-check" class="text-white" />
                                 </div>
@@ -86,12 +87,14 @@ export default {
                                         <p class="text-sm text-gray-600 leading-4 mt-1">{{ notification.text }}</p>
                                     </div>
                                 </div>
+                                <font-awesome-icon @click="close(notification.id)" icon="xmark" class="text-black absolute top-2 right-3 cursor-pointer" />
                             </div>
                             <!-- WARNING -->
                             <div v-if="notification.type === 'warning'"
-                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto">
+                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto relative">
                                 <div class="flex items-center justify-center px-4 bg-yellow-500">
                                     <font-awesome-icon icon="circle-exclamation" class="text-white" />
+                                    <font-awesome-icon @click="close(notification.id)" icon="xmark" class="text-black absolute top-2 right-3 cursor-pointer" />
                                 </div>
                                 <div class="px-4 py-2 -mx-3">
                                     <div class="mx-3">
@@ -99,10 +102,11 @@ export default {
                                         <p class="text-sm text-gray-600 leading-4 mt-1">{{ notification.text }}</p>
                                     </div>
                                 </div>
+                                <font-awesome-icon @click="close(notification.id)" icon="xmark" class="text-black absolute top-2 right-3 cursor-pointer" />
                             </div>
                             <!-- ERROR -->
                             <div v-if="notification.type === 'error'"
-                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto">
+                                class="flex w-full max-w-sm ml-auto mt-4 overflow-hidden bg-white rounded-lg shadow-md pointer-events-auto relative">
                                 <div class="flex items-center justify-center px-4 bg-red-500">
                                     <font-awesome-icon icon="triangle-exclamation" class="text-white" />
                                 </div>
@@ -112,6 +116,7 @@ export default {
                                         <p class="text-sm text-gray-600 leading-4 mt-1">{{ notification.text }}</p>
                                     </div>
                                 </div>
+                                <font-awesome-icon @click="close(notification.id)" icon="xmark" class="text-black absolute top-2 right-3 cursor-pointer" />
                             </div>
                         </div>
                     </Notification>

@@ -76,6 +76,8 @@ export default {
                     this.fetchUserData();
                 }
             }
+        } else {
+            this.$router.push('/');
         }
     },
     beforeUnmount() {
@@ -86,6 +88,10 @@ export default {
     },
     methods: {
         ...mapMutations(['setIsDragging', 'setIsLoading', 'setFilesData']),
+        // Cambiar título al entrar en x componente
+        onURLEnter() {
+            document.title = this.url ? `${this.url} - Kograph` : 'Kograph';
+        },
         // Método para el control del ratón al entrar en la zona
         handleDragOver(e) {
             e.preventDefault();
@@ -261,13 +267,29 @@ export default {
             </div>
 
             <!-- APP VIEWS -->
-            <AllView v-show="url == 'All' || url == 'Home'" ref="allView" />
-            <AlbumView v-show="url == 'Albums'" />
-            <AIView v-show="url == 'AI Powered'" />
-            <FavoriteView v-show="url == 'Favorites'" />
-            <SharedView v-show="url == 'Shared'" />
-            <PrivateView v-show="url == 'Private'" />
-            <SettingsView v-show="url == 'Settings'" />
+            <transition @enter="onURLEnter" appear>
+                <KeepAlive>
+                    <AllView v-show="url == 'All' || url == 'Home'" ref="allView" />
+                </KeepAlive>
+            </transition>
+            <transition @enter="onURLEnter" appear>
+                <AlbumView v-show="url == 'Albums'" />
+            </transition>
+            <transition @enter="onURLEnter" appear>
+                <AIView v-show="url == 'AI Powered'" />
+            </transition>
+            <transition @enter="onURLEnter" appear>
+                <FavoriteView v-show="url == 'Favorites'" />
+            </transition>
+            <transition @enter="onURLEnter" appear>
+                <SharedView v-show="url == 'Shared'" />
+            </transition>
+            <transition @enter="onURLEnter" appear>
+                <PrivateView v-show="url == 'Private'" />
+            </transition>
+            <transition @enter="onURLEnter" appear>
+                <SettingsView v-show="url == 'Settings'" />
+            </transition>
 
             <!-- !DRAGNDROP -->
             <DropZone v-if="isDragging" id="dropArea" ref="dropArea" class="drop-area">

@@ -9,8 +9,10 @@ export default {
             pageWidth: window.innerWidth
         }
     },
+	beforeMount() {
+		document.title = 'Home - Kograph';
+	},
 	mounted() {
-		this.$route.meta.title = 'Nuevo título para esta página';
 		window.addEventListener('resize', this.handleResize);
 	},
     beforeUnmount() {

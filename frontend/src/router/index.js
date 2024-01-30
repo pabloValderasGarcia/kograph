@@ -3,6 +3,8 @@ import store from '@/store'
 
 // Root
 import RootView from '@/views/RootView.vue'
+// File
+import ShowFile from '@/views/ShowFile.vue'
 // Auth
 import ContainerSwitcher from '@/views/auth/ContainerSwitcher.vue'
 import RecoveryPassword from '@/views/auth/password/RecoveryPassword.vue'
@@ -24,6 +26,8 @@ const routes = [
     { path: '/shared', component: RootView, meta: { url: 'Shared' } },
     { path: '/private', component: RootView, meta: { url: 'Private' } },
     { path: '/settings', component: RootView, meta: { url: 'Settings' } },
+    // FILE
+    { path: '/file/:id', component: ShowFile, meta: { requiresAuth: true } },
     // AUTH
     { path: '/login', component: ContainerSwitcher },
     { path: '/signup', component: ContainerSwitcher },

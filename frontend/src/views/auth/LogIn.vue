@@ -98,7 +98,7 @@ export default {
 			</div>
 			<div>
 				<label for="username">Username or email address</label>
-				<input v-model="username" id="username" name="username" autocomplete="username"/>
+				<input v-model="username" id="username" name="username" autocomplete="username" class="appearance-none" required/>
 			</div>
 			<div>
 				<div>
@@ -108,7 +108,7 @@ export default {
 					</div>
 					<p @click="this.$router.push('/recovery')">Forgot password?</p>
 				</div>
-				<input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" />
+				<input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" class="appearance-none" required/>
 			</div>
 			<p style="font-size: 14px" v-if="pageWidth <= 600">Don't have an account? <span style="cursor: pointer; color: #2f81f7" @click="this.$router.push('/signup')">Sign up</span></p>
 			<ButtonItem v-if="pageWidth > 600" title="Log In" />

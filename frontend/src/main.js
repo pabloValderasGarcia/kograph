@@ -25,6 +25,8 @@ import { faPenToSquare } from '@fortawesome/free-solid-svg-icons';
 import { faEye } from '@fortawesome/free-solid-svg-icons';
 import { faCloudArrowUp } from '@fortawesome/free-solid-svg-icons';
 import { faCaretDown } from '@fortawesome/free-solid-svg-icons';
+import { faChevronLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 // Usuario
 import { faUser } from '@fortawesome/free-solid-svg-icons';
 import { faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
@@ -41,11 +43,16 @@ import { faCircle as solidCircle } from '@fortawesome/free-regular-svg-icons';
 import { faVideo } from '@fortawesome/free-solid-svg-icons';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { faUpload } from '@fortawesome/free-solid-svg-icons';
+import { faClock } from '@fortawesome/free-regular-svg-icons';
+import { faFileLines } from '@fortawesome/free-regular-svg-icons';
+import { faHashtag } from '@fortawesome/free-solid-svg-icons';
+import { faSpinner } from '@fortawesome/free-solid-svg-icons';
+import { faFloppyDisk } from '@fortawesome/free-solid-svg-icons';
 library.add(
     faImage, faImages, faBolt, faStar, faRetweet, faLock, faTrashCan, faGear, faMagnifyingGlass,
-    faPenToSquare, faEye, faCloudArrowUp, faCaretDown, faUser, faRightFromBracket, faInfoCircle, 
-    faCircleCheck, faCircleXmark, faCircleExclamation, faTriangleExclamation, faXmark, regularCircle,
-    solidCircle, faVideo, faPlus, faUpload
+    faPenToSquare, faEye, faCloudArrowUp, faCaretDown, faChevronLeft, faArrowLeft, faUser, faRightFromBracket, 
+    faInfoCircle, faCircleCheck, faCircleXmark, faCircleExclamation, faTriangleExclamation, faXmark, 
+    regularCircle, solidCircle, faVideo, faPlus, faUpload, faClock, faFileLines, faHashtag, faSpinner, faFloppyDisk
 );
 
 // Axios

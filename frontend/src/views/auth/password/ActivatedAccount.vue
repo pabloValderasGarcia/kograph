@@ -21,16 +21,16 @@ export default {
 			notify({
 				group: 'foo',
 				title: 'Success',
-				text: 'Account successfully activated.',
+				text: 'Account successfully activated. Log in has been allowed.',
 				type: 'success',
-			});
+			}, -1);
 		}).catch(() => {
 			notify({
 				group: 'foo',
 				title: 'Error',
 				text: 'Invalid or expired activation link.',
 				type: 'error',
-			});
+			}, 5000);
 		});
 		this.$router.push('/login');
 	},

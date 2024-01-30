@@ -17,6 +17,7 @@ export default {
             pageWidth: window.innerWidth,
             // Ficheros
             groupedFiles: {}, // Por mes y año
+            selected: 'off',
             // Edición ficheros
             selectedGroupIds: [],
             selectedFileIds: [],
@@ -89,6 +90,17 @@ export default {
                 type: "uploaded_info"
             }, -1);
 
+            // Insertamos valores count a 0
+            setTimeout(() => {
+                if (document.getElementById('uploaded_count')) {
+                    document.getElementById('uploaded_count').innerHTML = `
+                        <p class="text-sm text-green-500 leading-4 m-0 mr-2">0 success</p>
+                        <p class="text-sm text-yellow-400 leading-4 m-0 mr-2">0 duplicate</p>
+                        <p class="text-sm text-red-500 leading-4 m-0">0 invalid</p>
+                    `;
+                }
+            }, 50)
+
             // Recorremos cada archivo
             let started = false;
             for (const file of newFiles) {
@@ -117,24 +129,24 @@ export default {
                 if (document.getElementById('uploaded_count')) {
                     document.getElementById('uploaded_count').innerHTML = `
                         <p class="text-sm text-green-500 leading-4 m-0 mr-2">${successCount} success</p>
-                        <p class="text-sm text-yellow-500 leading-4 m-0 mr-2">${duplicateCount} duplicate</p>
+                        <p class="text-sm text-yellow-400 leading-4 m-0 mr-2">${duplicateCount} duplicate</p>
                         <p class="text-sm text-red-500 leading-4 m-0">${invalidCount} invalid</p>
                     `;
                 }
                 if (document.getElementById('uploaded_alert_content')) {
                     document.getElementById('uploaded_alert_content').innerHTML += `
                         <div class="flex items-center w-[313px] overflow-hidden">
-                            ${file.status == true ? '<svg data-v-39738549="" class="svg-inline--fa fa-circle-check mr-2 text-green-500" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="circle-check" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>' : file.status == false ? '<svg data-v-39738549="" class="svg-inline--fa fa-circle-xmark mr-2 text-red-500" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="circle-xmark" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"></path></svg>' : '<svg data-v-39738549="" class="svg-inline--fa fa-circle-exclamation mr-2 text-yellow-500" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="circle-exclamation" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24V264c0 13.3-10.7 24-24 24s-24-10.7-24-24V152c0-13.3 10.7-24 24-24zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"></path></svg>'}
+                            ${file.status == true ? '<svg data-v-39738549="" class="svg-inline--fa fa-circle-check mr-2 text-green-500" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="circle-check" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>' : file.status == false ? '<svg data-v-39738549="" class="svg-inline--fa fa-circle-xmark mr-2 text-red-500" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="circle-xmark" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM175 175c9.4-9.4 24.6-9.4 33.9 0l47 47 47-47c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-47 47 47 47c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-47-47-47 47c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l47-47-47-47c-9.4-9.4-9.4-24.6 0-33.9z"></path></svg>' : '<svg data-v-39738549="" class="svg-inline--fa fa-circle-exclamation mr-2 text-yellow-400" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="circle-exclamation" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path class="" fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24V264c0 13.3-10.7 24-24 24s-24-10.7-24-24V152c0-13.3 10.7-24 24-24zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"></path></svg>'}
                             <p class="text-sm text-black leading-4 m-0 truncate ${file.type.trim().split('/')[0] == 'video' ? 'flex items-center gap-2' : ''}">${file.type.trim().split('/')[0] == 'video' ? '<svg data-v-39738549="" class="svg-inline--fa fa-video text-[rgba(0,0,0,.7)] text-[12px]" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="video" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path class="" fill="currentColor" d="M0 128C0 92.7 28.7 64 64 64H320c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128zM559.1 99.8c10.4 5.6 16.9 16.4 16.9 28.2V384c0 11.8-6.5 22.6-16.9 28.2s-23 5-32.9-1.6l-96-64L416 337.1V320 192 174.9l14.2-9.5 96-64c9.8-6.5 22.4-7.2 32.9-1.6z"></path></svg>' : ''}${file.name}</p>
                         </div>
                     `
                 }
 
-                // Insertamos valores 0
+                // Insertamos valores count
                 if (!started && document.getElementById('uploaded_count')) {
                     document.getElementById('uploaded_count').innerHTML = `
                         <p class="text-sm text-green-500 leading-4 m-0 mr-2">${successCount} success</p>
-                        <p class="text-sm text-yellow-500 leading-4 m-0 mr-2">${duplicateCount} duplicate</p>
+                        <p class="text-sm text-yellow-400 leading-4 m-0 mr-2">${duplicateCount} duplicate</p>
                         <p class="text-sm text-red-500 leading-4 m-0">${invalidCount} invalid</p>
                     `;
                 }
@@ -274,10 +286,8 @@ export default {
             return this.selectedGroupIds.includes(monthYearKey);
         },
         // Método para seleccionar/deseleccionar fichero individual
-        select_file(monthYearKey, file, event) {
-            const grandPaElement = event.target.parentElement.parentElement;
-            grandPaElement.removeEventListener('click', this.showFile);
-
+        selectFile(monthYearKey, file) {
+            this.selected = 'on';
             const fileId = file.id;
             if (this.selectedGroupIds.includes(monthYearKey)) {
                 // Si el grupo está seleccionado, toogle del archivo individual
@@ -295,14 +305,16 @@ export default {
             this.updateGroupSelection(monthYearKey);
         },
         // Método para seleccionar/deseleccionar grupo
-        select_group(monthYearKey, files) {
+        selectGroup(monthYearKey, files) {
             if (this.selectedGroupIds.includes(monthYearKey)) {
+                this.selected = 'off';
                 this.selectedGroupIds = this.selectedGroupIds.filter(group => group !== monthYearKey);
                 files.forEach(file => {
                     const fileId = file.id;
                     this.selectedFileIds = this.selectedFileIds.filter(selectedFileId => selectedFileId !== fileId);
                 });
             } else {
+                this.selected = 'on';
                 this.selectedGroupIds = [...this.selectedGroupIds, monthYearKey];
                 files.forEach(file => {
                     const fileId = file.id;
@@ -336,8 +348,9 @@ export default {
         // | ---------------------- ACCIONES FICHEROS ---------------------- |
         // | --------------------------------------------------------------- |
         // Método para mostrar fichero
-        showFile() {
-            // console.log(file);
+        async showFile(file_id) {
+            if (this.selected != 'on') this.$router.push(`/file/${file_id}`);
+            if (this.selected == 'on' && !this.selectedFileIds.length > 0) this.selected = 'off';
         },
         // Método para compartir ficheros
         shareFiles() {
@@ -353,7 +366,7 @@ export default {
                 this.selectedFileIds;
             }
         },
-        // Método para eliminar ficheros
+        // Métodos para eliminar ficheros
         closeDeleteModal () {
             this.isShowDeleteModal = false
         },
@@ -411,7 +424,7 @@ export default {
         <!-- SELECTED BAR -->
         <div class="selected_bar" v-if="selectedFileIds.length > 0">
             <p class="flex items-center gap-2"><font-awesome-icon class="selected_bar_close" icon="xmark"
-                    @click="selectedGroupIds = []; selectedFileIds = []" />{{
+                    @click="selectedGroupIds = []; selectedFileIds = [];" />{{
                         selectedFileIds.length }} selected</p>
             <div class="selected_bar_buttons">
                 <font-awesome-icon icon="retweet" @click="shareFiles" />
@@ -437,7 +450,7 @@ export default {
                 <p class="month_year" v-if="!isLoading" @mouseover="handleHover(files)" @mouseleave="handleLeave(files)">
                     {{ getFormattedMonthYear(monthYearKey) }}
                     <font-awesome-icon v-if="files.isHovered || isGroupSelected(monthYearKey)"
-                        @click="select_group(monthYearKey, files)"
+                        @click="selectGroup(monthYearKey, files)"
                         :class="[isGroupSelected(monthYearKey) ? 'text-blue-500' : (darkMode ? 'text-white' : 'text-black')]"
                         :icon="isGroupSelected(monthYearKey) ? ['fas', 'circle'] : ['far', 'circle']" />
                 </p>
@@ -446,7 +459,7 @@ export default {
                     <div :class="[getImageClass(file), isFileSelected(file) ? 'bg-clip-padding border-[3px] border-solid border-[rgb(59,130,246)]' : '']"
                         v-for="file in files" :key="file.id" :file="file"
                         :style="{ 'background-image': `url(${fullFileUrl(file)})`, 'height': isGridInit(monthYearKey) ? '200px' : 'unset', 'width': isGridInit(monthYearKey) ? (200 * file.width) / file.height + 'px' : 'unset' }"
-                        @click="showFile(file)" @mouseover="handleHover(file)" @mouseleave="handleLeave(file)">
+                        @click="showFile(file.id)" @mouseover="handleHover(file)" @mouseleave="handleLeave(file)">
                         <div class="file_overlay">
                             <div></div>
                             <div class="overlay_video" v-if="file.type == 'video'">
@@ -455,7 +468,7 @@ export default {
                             </div>
                             <font-awesome-icon class="absolute top-[10px] right-[10px] text-[20px] z-10"
                                 v-if="file.isHovered || isFileSelected(file)"
-                                @click="select_file(monthYearKey, file, $event)"
+                                @click="selectFile(monthYearKey, file)"
                                 :class="isFileSelected(file) ? 'text-blue-500' : 'text-white'"
                                 :icon="isFileSelected(file) ? ['fas', 'circle'] : ['far', 'circle']" />
                         </div>
@@ -564,7 +577,6 @@ body.dark-mode .selected_bar svg:hover {
 .month_year svg {
     font-size: 20px;
     cursor: pointer;
-    transform: translateY(-2px);
 }
 
 .grid-wrapper {
