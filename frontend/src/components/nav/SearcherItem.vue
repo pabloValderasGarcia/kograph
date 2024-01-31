@@ -1,4 +1,5 @@
 <script>
+import axios from 'axios';
 export default {
     name: 'SearcherItem',
     data() {
@@ -7,21 +8,27 @@ export default {
         }
     },
     props: ['url'],
+    mounted() {
+        document.addEventListener('click', this.close)
+    },
+    beforeUnmount() {
+        document.removeEventListener('click', this.close)
+    },
     methods: {
         close(e) {
             if (!this.$el.contains(e.target)) {
                 this.clicked = false;
             }
         },
-        search() {
-
+        async search(e) {
+            try {
+                const value = e.target.value;
+                const response = await axios.post(`${process.env.VUE_APP_SERVER_URL}/file/search/`, { 'search': value });
+                this.$emit('search-results', { 'value': value != '', 'data': response.data });
+            } catch (error) {
+                console.log(error)
+            }
         },
-    },
-    mounted() {
-        document.addEventListener('click', this.close)
-    },
-    beforeUnmount() {
-        document.removeEventListener('click', this.close)
     },
 }
 </script>
@@ -29,7 +36,7 @@ export default {
 <template>
     <div class="searcher" @click="clicked = true">
         <input name="search" class="input_searcher" :class="{ '!pl-[25px]': clicked }"
-            placeholder="Explore your memories" />
+            placeholder="Explore your memories" @input="search($event)"/>
         <font-awesome-icon icon="magnifying-glass" class="search_icon" v-if="!clicked" />
     </div>
 </template>

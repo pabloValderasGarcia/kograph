@@ -12,7 +12,9 @@ export default createStore({
         isLoading: false,
         files: [],
         filesData: [],
+        groupedFiles: {},
         selectedFiles: [],
+        searched: false,
     },
     mutations: {
         initializeStore(state) {
@@ -54,8 +56,21 @@ export default createStore({
         setFilesData(state, filesData) {
             state.filesData = filesData;
         },
+        setGroupedFiles(state, payload) {
+            const { key, files } = payload;
+            if (key) {
+                if (files.length == 0) {
+                    state.groupedFiles[key] = [];
+                } else {
+                    state.groupedFiles[key].push(files);
+                }
+            } else state.groupedFiles = files;
+        },
         setSelectedFiles(state, selectedFiles) {
             state.selectedFiles = selectedFiles;
+        },
+        setSearched(state, value) {
+            state.searched = value;
         },
         // REMOVE
         removeAccess(state) {

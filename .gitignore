@@ -1,4 +1,6 @@
 node_modules/
 /backend/.env
 /backend/venv
+/backend/files
+/backend/thumbnails
 /frontend/.env

@@ -5,7 +5,10 @@ export default {
 	name: 'ShowFile',
     data() {
 		return {
+			width: null,
+			height: null,
 			file: null,
+			initWidth: null,
 			initHeight: null,
 			showSideBar: true,
 			isLoading: false,
@@ -138,10 +141,10 @@ export default {
 				this.awsButtonClicked = true;
 				this.isLoading = true;
 				if (!this.file.aws) {
+					this.handleResize();
 					const response = await axios.get(`${process.env.VUE_APP_SERVER_URL}/file/show/${this.file.id}/?aws=true`);
 					this.file = response.data;
 					if (this.file.aws.faces && this.file.aws.labels) {
-						this.handleResize();
 						this.showAWS = true;
 						notify({
 							group: "foo",
@@ -174,10 +177,9 @@ export default {
 					sidebar.style.marginRight = 'unset';
 					this.showSideBar = true;
 				} else {
+					this.handleResize();
 					sidebar.classList.add('sidebar_hide');
-					sidebar.style.marginRight = '-' + ((sidebar.offsetWidth/window.innerWidth)*100+5.7) + '%';
-					const img = document.querySelector('.image_container img');
-					img.parentElement.style.height = '100%';
+					sidebar.style.marginRight = '-' + ((sidebar.offsetWidth/window.innerWidth)*100+5.8) + '%';
 					this.showSideBar = false;
 				}
 			}
@@ -200,29 +202,31 @@ export default {
 						element.onload = resolve;
 						element.onerror = reject;
 					});
-					let width = element.width;
-					let height = element.height;
+					this.width = element.width;
+					this.height = element.height;
 
 					// Conseguir que el AWS Info esté relativo a la imagen
-					if (width && height) {
+					if (this.width && this.height) {
 						const img = document.querySelector('.image_container img');
-						var ratio = width / height;
-						width = img.height * ratio;
-						height = img.height;
-						if (width > img.width && height) {
-							width = img.width;
-							height = img.width/ratio;
+						var ratio = this.width / this.height;
+						this.width = img.height * ratio;
+						this.height = img.height;
+						if (this.width > img.width && this.height) {
+							this.width = img.width;
+							this.height = img.width/ratio;
 						}
-						if (height < img.parentElement.offsetHeight) {
+						if (this.height < img.parentElement.offsetHeight) {
 							if (!this.initHeight) this.initHeight = img.parentElement.offsetHeight;
 							img.parentElement.style.height = 'fit-content';
 						}
+						if (this.width > img.parentElement.offsetWidth) {
+							if (!this.initWidth) this.initWidth = img.parentElement.offsetWidth;
+							img.parentElement.style.width = '100%';
+						}
 						if (this.initHeight) {
-							if ((this.initHeight - 1 < height && height < this.initHeight + 1) || height > this.initHeight) {
+							if ((this.initHeight - 1 < this.height && this.height < this.initHeight + 1) || this.height > this.initHeight) {
 								img.parentElement.style.height = '100%';
 								img.parentElement.style.width = 'unset';
-							} else {
-								img.parentElement.style.width = '100%';
 							}
 						}
 					}
@@ -246,9 +250,9 @@ export default {
 			textarea.style.height = `${textarea.scrollHeight}px`;
 			textarea.style.minHeight = `${textarea.scrollHeight}px`;
 		},
+		// Método para colocar el tooltip en top 0 en caso de que "toque techo" con la página
 		getTooltipStyle(element) {
 			const boundingBoxTop = element.BoundingBox.Top * 100;
-			console.log(boundingBoxTop)
 			const tooltipTop = boundingBoxTop <= 1 ? 0 : -42;
 
 			return {
@@ -263,7 +267,7 @@ export default {
     <section v-if="file != null">
         <div>
 			<div v-if="file.type == 'image'" class="image_container">
-				<img :src="fullFileUrl(file)" class="select-none object-contain w-full min-h-fit h-full max-h-full" />
+				<img :src="fullFileUrl(file)" class="select-none object-contain w-full min-h-fit h-full max-h-[100vh]" />
 				<div v-if="showAWS && file.aws.labels && file.aws.faces" class="aws">
 					<!-- LABELS -->
 					<div v-for="(item, index) in filteredInstances" :key="index">

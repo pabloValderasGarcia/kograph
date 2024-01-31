@@ -254,7 +254,6 @@ class DeleteAlbum(APIView):
 # Función para conseguir imagen de forma privada (en producción)
 @login_required
 def serve_protected_file(request, file_path):
-    print('a')
     user = request.user
 
     # File correspondiente al archivo solicitado
@@ -275,10 +274,16 @@ def serve_protected_file(request, file_path):
         
 # Vista para conseguir ficheros
 class GetFiles(APIView):
-    def get(self, request):
+    def post(self, request):
         # Iniciamos variables necesarias
+        search_value = request.data.get('search', '')
         user_id = request.user.id
         user_files = File.objects.filter(user_id=user_id)
+        
+        # Si está buscando devolvemos los ficheros donde algunos de sus campos incluya el valor x
+        if search_value:
+            user_files = user_files.filter(title__icontains=search_value) | user_files.filter(description__icontains=search_value)
+        
         serializer = FileSerializer(user_files, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -372,6 +377,61 @@ class DeleteFile(APIView):
 
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# Vista para eliminar ficheros según sus ids
+class ShowFile(APIView):
+    def get(self, request, *args, **kwargs):
+        # Recogemos el id
+        file_id = self.kwargs.get('file_id')
+        
+        # Verificamos que exista el id
+        if not file_id:
+            return Response({'detail': 'No file ID provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar que el objeto rekognition_client esté configurado
+        if rekognition_client is None:
+            return Response({'detail': 'Rekognition client not configured.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        try:
+            # Conseguimos y devolvemos el fichero
+            file = File.objects.get(id=file_id)
+            serializer = FileSerializer(file)
+            data = serializer.data.copy()
+            if self.request.query_params.get('aws'):
+                data['aws'] = {
+                    'faces': get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file))),
+                    'labels': get_labels(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
+                }
+            return Response(data, status=status.HTTP_200_OK)
+
+        except File.DoesNotExist:
+            return Response({'detail': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# Vista para actualizar un fichero según su id
+class UpdateFile(UpdateAPIView):
+    queryset = File.objects.all()
+    serializer_class = FileSerializer
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        # Obtener el campo y el nuevo valor desde los datos de la solicitud
+        property = request.data.get('property')
+        value = request.data.get('value')
+
+        # Validar si el campo existe en el modelo
+        if not hasattr(instance, property):
+            return Response({'detail': 'Invalid field to update.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Actualizar el campo y guardar la instancia
+        setattr(instance, property, value)
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 # Vista para encontrar ficheros con caras iguales
 class SearchPerson(APIView):
@@ -418,6 +478,44 @@ def compress_image(image_bytes, quality=85):
     except Exception as e:
         print(e)
         return None
+
+# Función para conseguir los ficheros donde aparecen caras de un fichero
+def find_matching_files(user_files, file_bytes):
+    matching_files = []
+
+    # Comprimimos el fichero y verificamos que exista
+    compressed_image_bytes = compress_image(file_bytes)
+    if not compressed_image_bytes:
+        return Response({'detail': 'Invalid target image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Recorremos cada fichero del usuario para comprobar si x es igual
+    for file in user_files:
+        file_faces_info = get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
+
+        if file_faces_info is not None and len(file_faces_info) > 0:
+            # Obtenemos bytes del fichero
+            compressed_file_image_bytes = compress_image(file.file.read())
+            
+            try:
+                # Utilizar rekognition_client para comparar las caras usando compare_faces
+                comparison_response = rekognition_client.compare_faces(
+                    TargetImage={
+                        'Bytes': compressed_image_bytes
+                    },
+                    SourceImage={
+                        'Bytes': compressed_file_image_bytes
+                    }
+                )
+
+                # Verificar si hay coincidencias
+                if any(match['Similarity'] >= 70.0 for match in comparison_response['FaceMatches']):
+                    matching_files.append(file)
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                return None
+
+    return matching_files
+        
     
 # Función para conseguir la información importante de cada cara de un fichero
 def get_faces_info(file_path):
@@ -441,7 +539,8 @@ def get_faces_info(file_path):
                     'BoundingBox': face_detail['BoundingBox'],
                     'Confidence': face_detail['Confidence'],
                 }
-                faces_info.append(face_info)
+                if face_info['Confidence'] >= 70.0:
+                    faces_info.append(face_info)
 
             return faces_info
 
@@ -468,92 +567,3 @@ def get_labels(file_path):
     except Exception as e:
         print(e)
         return None
-
-# Función para conseguir los ficheros donde aparecen caras de un fichero
-def find_matching_files(user_files, file_bytes):
-    matching_files = []
-
-    if not file_bytes:
-        return Response({'detail': 'Invalid target image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    for file in user_files:
-        file_faces_info = get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
-
-        if file_faces_info is not None and len(file_faces_info) > 0:
-            # Obtenemos bytes del fichero
-            file_image_bytes = file.file.read()
-            
-            try:
-                # Utilizar rekognition_client para comparar las caras usando compare_faces
-                comparison_response = rekognition_client.compare_faces(
-                    TargetImage={
-                        'Bytes': file_bytes
-                    },
-                    SourceImage={
-                        'Bytes': file_image_bytes
-                    },
-                    SimilarityThreshold=10.0
-                )
-
-                # Verificar si hay coincidencias
-                if any(match['Similarity'] >= 10.0 for match in comparison_response['FaceMatches']):
-                    matching_files.append(file)
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                return None
-
-            return matching_files
-        
-# Vista para eliminar ficheros según su id
-class ShowFile(APIView):
-    def get(self, request, *args, **kwargs):
-        # Recogemos el id
-        file_id = self.kwargs.get('file_id')
-        
-        # Verificamos que exista el id
-        if not file_id:
-            return Response({'detail': 'No file ID provided'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verificar que el objeto rekognition_client esté configurado
-        if rekognition_client is None:
-            return Response({'detail': 'Rekognition client not configured.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        try:
-            # Conseguimos y devolvemos el fichero
-            file = File.objects.get(id=file_id)
-            serializer = FileSerializer(file)
-            data = serializer.data.copy()
-            if self.request.query_params.get('aws'):
-                data['aws'] = {
-                    'faces': get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file))),
-                    'labels': get_labels(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
-                }
-            return Response(data, status=status.HTTP_200_OK)
-
-        except File.DoesNotExist:
-            return Response({'detail': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        except Exception as e:
-            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-class UpdateFile(UpdateAPIView):
-    queryset = File.objects.all()
-    serializer_class = FileSerializer
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        # Obtener el campo y el nuevo valor desde los datos de la solicitud
-        property = request.data.get('property')
-        value = request.data.get('value')
-
-        # Validar si el campo existe en el modelo
-        if not hasattr(instance, property):
-            return Response({'detail': 'Invalid field to update.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Actualizar el campo y guardar la instancia
-        setattr(instance, property, value)
-        instance.save()
-
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)

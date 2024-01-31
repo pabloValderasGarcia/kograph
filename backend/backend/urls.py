@@ -23,10 +23,11 @@ urlpatterns = [
     # FILE
     path('file/get/', GetFiles.as_view(), name='get_files'),
     path('file/upload/', UploadFile.as_view(), name='upload_file'),
-    path('file/delete/', DeleteFile.as_view(), name='delete_file'),
-    path('file/search_person/', SearchPerson.as_view(), name='search_person'),
-    path('file/show/<int:file_id>/', ShowFile.as_view(), name='show_file'),
     path('file/update/<int:pk>/', UpdateFile.as_view(), name='update_file'),
+    path('file/show/<int:file_id>/', ShowFile.as_view(), name='show_file'),
+    path('file/delete/', DeleteFile.as_view(), name='delete_file'),
+    path('file/search/', GetFiles.as_view(), name='get_files'),
+    path('file/search_person/', SearchPerson.as_view(), name='search_person'),
     # EMAIL
     path('validate_link/', ValidateLinkView.as_view(), name='validate_link'),
     path('auth/users/check_email/', CheckEmail.as_view(), name='check_email'),

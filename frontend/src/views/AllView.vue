@@ -16,8 +16,8 @@ export default {
             darkMode: document.body.classList.contains('dark-mode'),
             pageWidth: window.innerWidth,
             // Ficheros
-            groupedFiles: {}, // Por mes y año
             selected: 'off',
+            originalGroupedFiles: [],
             // Edición ficheros
             selectedGroupIds: [],
             selectedFileIds: [],
@@ -38,7 +38,7 @@ export default {
         window.removeEventListener('darkModeChanged', this.handleDarkModeChanged);
     },
     computed: {
-        ...mapState(['isLoading', 'files', 'filesData', 'selectedFiles']),
+        ...mapState(['isLoading', 'files', 'filesData', 'groupedFiles', 'selectedFiles', 'searched']),
         // Manejo de archivos FRONTEND - BACKEND
         fullFileUrl() {
             return (file) => {
@@ -51,7 +51,7 @@ export default {
         // | --------------------------------------------------- |
         // | ---------------------- OTROS ---------------------- |
         // | --------------------------------------------------- |
-        ...mapMutations(['setIsLoading', 'setFiles', 'setFilesData', 'setSelectedFiles']),
+        ...mapMutations(['setIsLoading', 'setFiles', 'setFilesData', 'setGroupedFiles', 'setSelectedFiles', 'setSearched']),
         // Método para comprobar si es gridInit (para funcionamiento masonry excelente)
         isGridInit(monthYearKey) {
             const files = this.groupedFiles[monthYearKey] || [];
@@ -99,7 +99,7 @@ export default {
                         <p class="text-sm text-red-500 leading-4 m-0">0 invalid</p>
                     `;
                 }
-            }, 50)
+            }, 10)
 
             // Recorremos cada archivo
             let started = false;
@@ -162,7 +162,7 @@ export default {
             try {
                 // Petición para recoger todos los ficheros según categoría
                 const token = localStorage.getItem('access');
-                const response = await axios.get(`${process.env.VUE_APP_SERVER_URL}/file/get/`, {
+                const response = await axios.post(`${process.env.VUE_APP_SERVER_URL}/file/get/`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -170,6 +170,9 @@ export default {
 
                 this.setFilesData(response.data);
                 await this.groupFilesByMonthAndYear();
+                if (!this.originalGroupedFiles.length) {
+                    this.originalGroupedFiles = this.groupedFiles;
+                }
             } catch (error) {/**/ }
             this.setIsLoading(false);
 
@@ -177,7 +180,7 @@ export default {
         },
         // Método para obtener los ficheros organizados por mes y año
         async groupFilesByMonthAndYear() {
-            this.groupedFiles = {};
+            this.setGroupedFiles({ files: {} });
 
             // Se recorre cada fichero añadiéndole su ancho y alto para masonry
             const filesWithDimensions = await Promise.all(this.filesData.map(async file => {
@@ -226,12 +229,10 @@ export default {
             this.filesData.forEach((file) => {
                 const date = new Date(file.origin_created_at);
                 const monthYearKey = `${date.getMonth() + 1}-${date.getFullYear()}`;
-
                 if (!this.groupedFiles[monthYearKey]) {
-                    this.groupedFiles[monthYearKey] = [];
+                    this.setGroupedFiles({ key: monthYearKey, files: [] });
                 }
-
-                this.groupedFiles[monthYearKey].push(file);
+                this.setGroupedFiles({ key: monthYearKey, files: file });
             });
 
             // Ordenar las claves por fecha
@@ -253,7 +254,7 @@ export default {
             });
 
             // Actualizar el objeto groupedFiles con el ordenado
-            this.groupedFiles = sortedGroupedFiles;
+            this.setGroupedFiles({ files: sortedGroupedFiles });
         },
         getFormattedMonthYear(monthYearKey) {
             const [month, year] = monthYearKey.split('-');
@@ -379,10 +380,33 @@ export default {
             // Petición eliminar ficheros con x IDs
             if (this.selectedFileIds.length > 0) {
                 try {
+                    this.setIsLoading(true);
                     await axios.post(`${process.env.VUE_APP_SERVER_URL}/file/delete/`, { 'file_ids': this.selectedFileIds });
-                    await this.getFiles();
+
+                    // Si al final no hay ningún fichero, conseguimos todos
+                    this.setFilesData(this.filesData.filter(file => !this.selectedFileIds.includes(file.id)));
+                    let filteredGroupedFiles = {};
+                    if (this.filesData.length > 0) {
+                        Object.keys(this.groupedFiles).forEach(key => {
+                            filteredGroupedFiles[key] = this.groupedFiles[key].filter(file => !this.selectedFileIds.includes(file.id));
+                            if (filteredGroupedFiles[key].length === 0) {
+                                delete filteredGroupedFiles[key];
+                            }
+                        });
+                    } else {
+                        this.setSearched(false);
+                        filteredGroupedFiles = this.originalGroupedFiles;
+                        Object.keys(this.groupedFiles).forEach(key => {
+                            filteredGroupedFiles[key] = filteredGroupedFiles[key].filter(file => !this.groupedFiles[key].some(groupedFile => groupedFile.id === file.id));
+                            if (filteredGroupedFiles[key].length === 0) {
+                                delete filteredGroupedFiles[key];
+                            }
+                        });
+                    }
+                    this.setGroupedFiles({ files: filteredGroupedFiles });
                     this.selectedGroupIds = [];
                     this.selectedFileIds = [];
+
                     notify({
                         group: "foo",
                         title: "Success",
@@ -390,6 +414,7 @@ export default {
                         type: "success"
                     }, 4000);
                 } catch (e) {
+                    console.log(e)
                     notify({
                         group: "foo",
                         title: "Error",
@@ -397,6 +422,7 @@ export default {
                         type: "error"
                     }, 4000);
                 }
+                this.setIsLoading(false);
             }
         },
     },
@@ -422,7 +448,7 @@ export default {
         </fwb-modal>
 
         <!-- SELECTED BAR -->
-        <div class="selected_bar" v-if="selectedFileIds.length > 0">
+        <div class="selected_bar" v-if="selectedFileIds.length > 0 && !isLoading">
             <p class="flex items-center gap-2"><font-awesome-icon class="selected_bar_close" icon="xmark"
                     @click="selectedGroupIds = []; selectedFileIds = [];" />{{
                         selectedFileIds.length }} selected</p>
@@ -434,7 +460,7 @@ export default {
         </div>
         
         <!-- LAYOUT NO PHOTOS -->
-        <div class="no_photos" v-if="!isLoading & filesData.length == 0">
+        <div class="no_photos" v-if="!isLoading & groupedFiles.length == 0">
             <div
                 :style="{ 'background-image': `url(${this.darkMode ? require('@/assets/img/app/no_photos_dark.png') : require('@/assets/img/app/no_photos.png')})` }">
             </div>
@@ -445,7 +471,7 @@ export default {
         </div>
 
         <!-- GRID MASONRY -->
-        <div v-if="!isLoading">
+        <div v-if="!isLoading && groupedFiles.length != 0">
             <div v-for="(files, monthYearKey) in groupedFiles" :key="monthYearKey" class="file_container">
                 <p class="month_year" v-if="!isLoading" @mouseover="handleHover(files)" @mouseleave="handleLeave(files)">
                     {{ getFormattedMonthYear(monthYearKey) }}
@@ -478,7 +504,7 @@ export default {
         </div>
 
         <!-- LOADER -->
-        <div class="loader_container" v-if="isLoading">
+        <div class="loader_container" v-if="isLoading" id="loader">
             <div class="loader"></div>
         </div>
     </div>
@@ -653,11 +679,15 @@ body.dark-mode .selected_bar svg:hover {
     z-index: 9;
     position: relative;
     display: flex;
+    flex-direction: column;
+    gap: 30px;
     align-items: center;
     justify-content: center;
     width: 100%;
     height: calc(100vh - 200px);
     background-color: white;
+    padding: 0 10px;
+    transition: all 1.5s ease-in-out;
 }
 
 body.dark-mode .loader_container {

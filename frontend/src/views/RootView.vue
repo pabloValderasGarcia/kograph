@@ -39,11 +39,12 @@ export default {
                 { id: 5, url: 'shared', title: 'Shared', icon: 'retweet' },
                 { id: 6, url: 'private', title: 'Private', icon: 'lock' },
                 { id: 7, url: 'settings', title: 'Settings', icon: 'gear' }
-            ]
+            ],
+            originalFilesData: [],
         }
     },
     computed: {
-        ...mapState(['isDragging', 'isLoading']),
+        ...mapState(['isDragging', 'isLoading', 'filesData', 'groupedFiles', 'searched']),
         left_items() {
             return this.items.slice(0, 5);
         },
@@ -87,7 +88,7 @@ export default {
         window.removeEventListener('resize', this.handleResize);
     },
     methods: {
-        ...mapMutations(['setIsDragging', 'setIsLoading', 'setFilesData']),
+        ...mapMutations(['setIsDragging', 'setIsLoading', 'setFilesData', 'setGroupedFiles', 'setSearched']),
         // Cambiar título al entrar en x componente
         onURLEnter() {
             document.title = this.url ? `${this.url} - Kograph` : 'Kograph';
@@ -163,16 +164,22 @@ export default {
         handleResize() {
             this.pageWidth = window.innerWidth;
         },
+        // Método para conseguir archivos
+        async getFiles() {
+            await this.$refs.allView.getFiles();
+            this.setSearched(false);
+        },
         // Método para subir archivos
         async onInputChange(e) {
             await this.$refs.allView.addFiles(Array.from(e.target.files));
-            await this.$refs.allView.getFiles();
+            await this.getFiles();
             e.target.value = null;
         },
         // Método para encontrar fotos donde aparecen caras de x fichero
         async searchImage(e) {
             e.stopPropagation();
             this.clicked = false;
+            this.setSearched(false);
 
             // Variables necesarias
             this.setIsLoading(true);
@@ -183,6 +190,31 @@ export default {
 
             // Petición para conseguir ficheros donde caras aparecen
             try {
+                // Poner mensaje en el loader
+                setTimeout(() => {
+                    const loader = document.getElementById('loader');
+                    if (loader) {
+                        const messageParagraph = document.createElement('p');
+                        messageParagraph.textContent = 'Please wait. The process will take as long as the number of files you have.';
+                        messageParagraph.classList.add('text-[1.2em]', 'text-center');
+
+                        // Animación de aparición de mensaje estilo Windows
+                        messageParagraph.animate(
+                            [
+                                { opacity: 0 },
+                                { opacity: 1 }
+                            ],
+                            {
+                                duration: 1500,
+                                easing: 'ease-in-out',
+                                fill: 'forwards'
+                            }
+                        );
+                        loader.insertBefore(messageParagraph, loader.firstChild);
+                    }
+                }, 5000)
+
+                // Petición al servidor para conseguir las fotos parecidas
                 const response = await axios.post(`${process.env.VUE_APP_SERVER_URL}/file/search_person/`, formData, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -201,6 +233,7 @@ export default {
                         text: "Identical faces found in this file.",
                         type: "success"
                     }, 5000);
+                    this.setSearched(true);
                 } else {
                     // Si no es así, mostramos alerta
                     notify({
@@ -214,7 +247,52 @@ export default {
             } catch (e) {
                 this.setIsLoading(false);
             }
-        }
+        },
+        // Método para manejar los resultados de la búsqueda recibidos del componente SearcherItem
+        async handleSearchResults(data) {
+            this.setIsLoading(true);
+
+            if (!this.originalFilesData.length) {
+                this.originalFilesData = [...this.filesData];
+                this.originalGroupedFiles = this.groupedFiles;
+            }
+
+            // Comprobamos que el usuario haya escrito algo
+            if (data.value) {
+                this.setFilesData(data.data);
+                const filteredGroupedFiles = {};
+                Object.keys(this.originalGroupedFiles).forEach(key => {
+                    filteredGroupedFiles[key] = this.originalGroupedFiles[key].filter(file => {
+                        return data.data.some(dataFile => dataFile.id === file.id);
+                    });
+                    if (filteredGroupedFiles[key].length === 0) {
+                        delete filteredGroupedFiles[key];
+                    }
+                });
+
+                this.setGroupedFiles({ files: filteredGroupedFiles });
+            } else {
+                if (data.data.length == this.originalFilesData.length) {
+                    this.setFilesData(this.originalFilesData);
+                    this.setGroupedFiles({ files: this.originalGroupedFiles });
+                } else {
+                    this.setFilesData([...data.data]);
+
+                    const filteredGroupedFiles = {};
+                    Object.keys(this.originalGroupedFiles).forEach(key => {
+                        filteredGroupedFiles[key] = this.originalGroupedFiles[key].filter(file => {
+                            return data.data.some(dataFile => dataFile.id === file.id);
+                        });
+                        if (filteredGroupedFiles[key].length === 0) {
+                            delete filteredGroupedFiles[key];
+                        }
+                    });
+                    this.setGroupedFiles({ files: filteredGroupedFiles });
+                }
+            }
+
+            this.setIsLoading(false);
+        },
     },
     components: { HomeView, LogoItem, SearcherItem, UserDropdown, NavItem, DropZone, AllView, AlbumView, AIView, FavoriteView, SharedView, PrivateView, SettingsView }
 }
@@ -230,8 +308,9 @@ export default {
             <div class="nav">
                 <LogoItem @click="this.$router.push('/all')" v-show="pageWidth > 600" />
                 <div class="nav_mobile" v-show="pageWidth <= 600"></div>
-                <SearcherItem />
-                <label for="search_image" title="Upload files" v-if="url == 'All'">
+                <SearcherItem @search-results="handleSearchResults"/>
+                <font-awesome-icon v-if="url == 'All' && searched" @click="getFiles" icon="rotate" class="cursor-pointer" />
+                <label for="search_image" title="Upload files" v-if="url == 'All' && filesData.length > 0">
                     <svg class="search_image_icon" xmlns="http://www.w3.org/2000/svg" width="17" height="18" viewBox="0 0 17 18"
                         fill="none">
                         <path
@@ -244,7 +323,7 @@ export default {
                             fill="white" stroke="black" stroke-width="0.6" class="i3" />
                     </svg>
                 </label>
-                <input type="file" id="search_image" @change="searchImage($event)" class="hidden" v-if="url == 'All'"/>
+                <input type="file" id="search_image" @change="searchImage($event)" class="hidden" v-if="url == 'All' && filesData.length > 0"/>
                 <label for="file-input" title="Upload files">
                     <font-awesome-icon icon="upload" class="upload" />
                 </label>
@@ -268,9 +347,7 @@ export default {
 
             <!-- APP VIEWS -->
             <transition @enter="onURLEnter" appear>
-                <KeepAlive>
-                    <AllView v-show="url == 'All' || url == 'Home'" ref="allView" />
-                </KeepAlive>
+                <AllView v-show="url == 'All' || url == 'Home'" ref="allView" />
             </transition>
             <transition @enter="onURLEnter" appear>
                 <AlbumView v-show="url == 'Albums'" />
@@ -416,6 +493,15 @@ body.dark-mode .drop-area label div {
     clip: rect(0, 0, 0, 0) !important;
     white-space: nowrap !important;
     border: 0 !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        }
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes appearAnimation {

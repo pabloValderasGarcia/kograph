@@ -135,7 +135,7 @@ export default {
                                 <div class="w-full">
                                     <div class="relative">
                                         <p class="font-semibold text-black select-none cursor-pointer py-3 px-4" @click="uploaded_success_open = !uploaded_success_open"><font-awesome-icon icon="caret-down" class="mr-1 transition-all" :class="!uploaded_success_open ? 'rotate-180' : ''"/> {{ notification.title }}</p>
-                                        <div class="pb-3 px-4 max-h-[300px] overflow-y-auto" :class="!uploaded_success_open ? '': 'hidden'">
+                                        <div class="pb-3 px-4 max-h-[300px] overflow-y-auto uploaded_files" :class="!uploaded_success_open ? '': 'hidden'">
                                             <div class="flex flex-col gap-2" id="uploaded_alert_content">
                                                 <div class="flex items-center w-[313px] overflow-hidden" id="uploaded_count"></div>
                                                 <hr class="mb-1 border-1 border-solid border-black"/>
