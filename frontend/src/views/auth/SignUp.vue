@@ -160,11 +160,11 @@ export default {
             </div>
             <div class="form_input">
                 <label for="email">Email address</label>
-                <input v-model="email" id="email" type="email" required/>
+                <input v-model="email" id="email" type="email"/>
             </div>
             <div class="form_input">
                 <label for="username">Username</label>
-                <input v-model="username" id="username" required/>
+                <input v-model="username" id="username"/>
             </div>
             <div class="form_input">
                 <div class="label_password">
@@ -172,7 +172,7 @@ export default {
                     <font-awesome-icon icon="eye" :class="!password ? 'password_hidden' : ''"
                         @click.prevent="toggleShowPassword" />
                 </div>
-                <input v-model="password" id="password" :type="showPassword ? 'text' : 'password'" required/>
+                <input v-model="password" id="password" :type="showPassword ? 'text' : 'password'"/>
             </div>
             <p style="font-size: 14px" v-if="pageWidth <= 600">Have an account? <span style="cursor: pointer; color: #2f81f7" @click="this.$router.push('/login')">Log In</span></p>
             <ButtonItem v-if="pageWidth > 600" title="Log In" />

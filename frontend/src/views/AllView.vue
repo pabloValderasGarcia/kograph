@@ -17,7 +17,6 @@ export default {
             pageWidth: window.innerWidth,
             // Ficheros
             selected: 'off',
-            originalGroupedFiles: [],
             // Edición ficheros
             selectedGroupIds: [],
             selectedFileIds: [],
@@ -25,10 +24,9 @@ export default {
             isShowDeleteModal: false
         }
     },
-    emits: ['updateSelected'],
     async mounted() {
         // Al ser montado el componente, se recogen los ficheros y se activan eventos necesarios
-        await this.getFiles();
+        if (this.filesData.length == 0) await this.getFiles();
         window.addEventListener('resize', this.handleResize);
         window.addEventListener('darkModeChanged', this.handleDarkModeChanged);
     },
@@ -38,12 +36,12 @@ export default {
         window.removeEventListener('darkModeChanged', this.handleDarkModeChanged);
     },
     computed: {
-        ...mapState(['isLoading', 'files', 'filesData', 'groupedFiles', 'selectedFiles', 'searched']),
+        ...mapState(['isLoading', 'files', 'filesData', 'originalFilesData', 'groupedFiles', 'originalGroupedFiles', 'selectedFiles', 'searched']),
         // Manejo de archivos FRONTEND - BACKEND
         fullFileUrl() {
             return (file) => {
                 if (file.type == 'image') return `${process.env.VUE_APP_SERVER_URL}${file.file}`;
-                else return `${process.env.VUE_APP_SERVER_URL}/thumbnails${file.thumbnail}.png`;
+                else if (file.type == 'video') return `${process.env.VUE_APP_SERVER_URL}/thumbnails${file.thumbnail}.png`;
             };
         },
     },
@@ -51,7 +49,7 @@ export default {
         // | --------------------------------------------------- |
         // | ---------------------- OTROS ---------------------- |
         // | --------------------------------------------------- |
-        ...mapMutations(['setIsLoading', 'setFiles', 'setFilesData', 'setGroupedFiles', 'setSelectedFiles', 'setSearched']),
+        ...mapMutations(['setSearchValue', 'setIsLoading', 'setFiles', 'setFilesData', 'setOriginalFilesData', 'setGroupedFiles', 'setOriginalGroupedFiles', 'setSelectedFiles', 'setSearched']),
         // Método para comprobar si es gridInit (para funcionamiento masonry excelente)
         isGridInit(monthYearKey) {
             const files = this.groupedFiles[monthYearKey] || [];
@@ -169,10 +167,9 @@ export default {
                 });
 
                 this.setFilesData(response.data);
+                this.setOriginalFilesData(response.data);
                 await this.groupFilesByMonthAndYear();
-                if (!this.originalGroupedFiles.length) {
-                    this.originalGroupedFiles = this.groupedFiles;
-                }
+                this.setOriginalGroupedFiles({ files: this.groupedFiles });
             } catch (error) {/**/ }
             this.setIsLoading(false);
 
@@ -180,8 +177,8 @@ export default {
         },
         // Método para obtener los ficheros organizados por mes y año
         async groupFilesByMonthAndYear() {
-            this.setGroupedFiles({ files: {} });
-
+            this.setGroupedFiles({ files: [] });
+            
             // Se recorre cada fichero añadiéndole su ancho y alto para masonry
             const filesWithDimensions = await Promise.all(this.filesData.map(async file => {
                 try {
@@ -250,9 +247,16 @@ export default {
             // Crear un nuevo objeto ordenado
             const sortedGroupedFiles = {};
             sortedKeys.forEach((key) => {
-                sortedGroupedFiles[key] = this.groupedFiles[key];
-            });
+                // Ordenar los archivos dentro de cada grupo por origin_created_at
+                const sortedFiles = this.groupedFiles[key].sort((fileA, fileB) => {
+                    const dateA = new Date(fileA.origin_created_at);
+                    const dateB = new Date(fileB.origin_created_at);
+                    return dateB - dateA;
+                });
 
+                sortedGroupedFiles[key] = sortedFiles;
+            });
+            
             // Actualizar el objeto groupedFiles con el ordenado
             this.setGroupedFiles({ files: sortedGroupedFiles });
         },
@@ -385,25 +389,38 @@ export default {
 
                     // Si al final no hay ningún fichero, conseguimos todos
                     this.setFilesData(this.filesData.filter(file => !this.selectedFileIds.includes(file.id)));
+                    this.setOriginalFilesData(this.originalFilesData.filter(file => !this.selectedFileIds.includes(file.id)));
                     let filteredGroupedFiles = {};
                     if (this.filesData.length > 0) {
                         Object.keys(this.groupedFiles).forEach(key => {
                             filteredGroupedFiles[key] = this.groupedFiles[key].filter(file => !this.selectedFileIds.includes(file.id));
-                            if (filteredGroupedFiles[key].length === 0) {
+                            if (filteredGroupedFiles[key].length == 0) {
                                 delete filteredGroupedFiles[key];
+                                this.groupedFiles[key] = [];
+                                this.setGroupedFiles({ key: key, files: [] });
                             }
                         });
                     } else {
                         this.setSearched(false);
-                        filteredGroupedFiles = this.originalGroupedFiles;
+                        filteredGroupedFiles = JSON.parse(JSON.stringify(this.originalGroupedFiles));
                         Object.keys(this.groupedFiles).forEach(key => {
                             filteredGroupedFiles[key] = filteredGroupedFiles[key].filter(file => !this.groupedFiles[key].some(groupedFile => groupedFile.id === file.id));
-                            if (filteredGroupedFiles[key].length === 0) {
+                            if (filteredGroupedFiles[key].length == 0) {
                                 delete filteredGroupedFiles[key];
                             }
                         });
+                        this.setSearchValue('');
                     }
                     this.setGroupedFiles({ files: filteredGroupedFiles });
+                    Object.keys(this.originalGroupedFiles).forEach(key => {
+                        const updatedFiles = this.originalGroupedFiles[key].filter(file => !this.selectedFileIds.includes(file.id));
+                        this.setOriginalGroupedFiles({ key: key, files: updatedFiles });
+                        this.originalGroupedFiles[key] = updatedFiles;
+                        if (this.originalGroupedFiles[key].length == 0) {
+                            this.originalGroupedFiles[key] = [];
+                            this.setOriginalGroupedFiles({ key: key, files: [] });
+                        }
+                    });
                     this.selectedGroupIds = [];
                     this.selectedFileIds = [];
 
@@ -414,7 +431,6 @@ export default {
                         type: "success"
                     }, 4000);
                 } catch (e) {
-                    console.log(e)
                     notify({
                         group: "foo",
                         title: "Error",
@@ -435,8 +451,8 @@ export default {
         <!-- MODALS -->
         <fwb-modal v-if="isShowDeleteModal" @close="closeDeleteModal" class="my_modal">
             <template #header>
-                <div class="flex items-center text-lg gap-3">
-                    <font-awesome-icon icon="circle-exclamation" class="text-yellow-400" />Are you sure to delete {{ this.selectedFileIds.length == 1 ? 'this file' : 'those files' }}?
+                <div class="flex items-center gap-3">
+                    <font-awesome-icon icon="circle-exclamation" class="text-yellow-300" />Are you sure to delete {{ this.selectedFileIds.length == 1 ? 'this file' : 'those files' }}?
                 </div>
             </template>
             <template #footer>
@@ -453,14 +469,23 @@ export default {
                     @click="selectedGroupIds = []; selectedFileIds = [];" />{{
                         selectedFileIds.length }} selected</p>
             <div class="selected_bar_buttons">
-                <font-awesome-icon icon="retweet" @click="shareFiles" />
-                <font-awesome-icon icon="plus" @click="addFilesToAlbum" />
-                <font-awesome-icon :icon="['far', 'trash-can']" @click="showDeleteModal" />
+                <div class="tooltip cursor-pointer" @click="shareFiles">
+                    <font-awesome-icon icon="retweet" />
+                    <p>Share</p>
+                </div>
+                <div class="tooltip cursor-pointer" @click="addFilesToAlbum">
+                    <font-awesome-icon icon="plus" />
+                    <p>Add&nbsp;to&nbsp;album</p>
+                </div>
+                <div class="tooltip cursor-pointer" @click="showDeleteModal">
+                    <font-awesome-icon :icon="['far', 'trash-can']" />
+                    <p>Delete</p>
+                </div>
             </div>
         </div>
         
         <!-- LAYOUT NO PHOTOS -->
-        <div class="no_photos" v-if="!isLoading & groupedFiles.length == 0">
+        <div class="no_photos" v-if="!isLoading && Object.keys(groupedFiles).length == 0">
             <div
                 :style="{ 'background-image': `url(${this.darkMode ? require('@/assets/img/app/no_photos_dark.png') : require('@/assets/img/app/no_photos.png')})` }">
             </div>
@@ -471,7 +496,7 @@ export default {
         </div>
 
         <!-- GRID MASONRY -->
-        <div v-if="!isLoading && groupedFiles.length != 0">
+        <div v-if="!isLoading && Object.keys(groupedFiles).length > 0">
             <div v-for="(files, monthYearKey) in groupedFiles" :key="monthYearKey" class="file_container">
                 <p class="month_year" v-if="!isLoading" @mouseover="handleHover(files)" @mouseleave="handleLeave(files)">
                     {{ getFormattedMonthYear(monthYearKey) }}
@@ -482,7 +507,7 @@ export default {
                 </p>
                 <div v-if="!isLoading"
                     :class="{ 'grid-wrapper': true, 'grid-init': isGridInit(monthYearKey), 'grid-cols-mine': pageWidth > 800, 'auto-rows-[140px]': pageWidth > 800 }">
-                    <div :class="[getImageClass(file), isFileSelected(file) ? 'bg-clip-padding border-[3px] border-solid border-[rgb(59,130,246)]' : '']"
+                    <div class="file_view" :class="[getImageClass(file), isFileSelected(file) ? 'bg-clip-padding border-[3px] border-solid border-[rgb(59,130,246)]' : '']"
                         v-for="file in files" :key="file.id" :file="file"
                         :style="{ 'background-image': `url(${fullFileUrl(file)})`, 'height': isGridInit(monthYearKey) ? '200px' : 'unset', 'width': isGridInit(monthYearKey) ? (200 * file.width) / file.height + 'px' : 'unset' }"
                         @click="showFile(file.id)" @mouseover="handleHover(file)" @mouseleave="handleLeave(file)">
@@ -531,26 +556,29 @@ body.dark-mode .selected_bar {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, .15);
 }
 
+.selected_bar svg {
+    font-size: .9em;
+}
+
 .selected_bar_buttons {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.selected_bar_buttons > svg, .selected_bar_close {
+.selected_bar_buttons > div, .selected_bar_close {
     user-select: none;
     cursor: pointer;
     aspect-ratio: 1/1;
     border-radius: 5px;
-    font-weight: 500;
     padding: 10px;
 }
 
-.selected_bar svg:hover {
+.selected_bar_buttons div:hover, .selected_bar_close:hover {
     background-color: #ececec;
 }
 
-body.dark-mode .selected_bar svg:hover {
+body.dark-mode .selected_bar_buttons div:hover, .selected_bar_close:hover {
     background-color: #373737 !important;
 }
 
@@ -642,6 +670,14 @@ body.dark-mode .selected_bar svg:hover {
     transition: opacity .1s ease-in-out;
 }
 
+.file_view {
+    background-color: #ececec;
+}
+
+body.dark-mode .file_view {
+    background-color: #373737;
+}
+
 .overlay_video {
     background-color: rgba(0, 0, 0, .6);
     padding: 5px;
@@ -703,6 +739,39 @@ body.dark-mode .loader_container {
     display: inline-block;
     box-sizing: border-box;
     animation: rotation 1s linear infinite;
+}
+
+.tooltip {
+    position: relative;
+}
+
+.tooltip > p {
+	width: auto;
+	border-radius: 5px;
+	padding: 8px 15px;
+	position: absolute;
+	bottom: -40px;
+	right: 0;
+	opacity: 0;
+	transition: opacity .3s ease-in-out;
+	background-color: #d7d7d7;
+    pointer-events: none;
+}
+
+.ttl p {
+    width: fit-content;
+    height: fit-content;
+	top: unset !important;
+	left: 0 !important;
+	bottom: -40px !important;
+}
+
+body.dark-mode .tooltip > p {
+	background-color: #373737;
+}
+
+.tooltip:hover > p {
+	opacity: 1;
 }
 
 @keyframes rotation {

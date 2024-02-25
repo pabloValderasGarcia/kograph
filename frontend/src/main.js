@@ -16,14 +16,15 @@ import { faImage, faImages, faStar, faTrashCan, faCircle as solidCircle, faClock
 import { faBolt, faRotate, faRetweet, faLock, faGear, faMagnifyingGlass, faPenToSquare, faEye, 
     faCloudArrowUp, faCaretDown, faChevronLeft, faArrowLeft, faUser, faRightFromBracket, faInfoCircle, 
     faCircleCheck, faCircleXmark, faCircleExclamation, faTriangleExclamation, faXmark, faCircle as regularCircle, 
-    faVideo, faPlus, faUpload, faHashtag, faSpinner, faFloppyDisk 
+    faVideo, faPlus, faUpload, faHashtag, faSpinner, faFloppyDisk, faMicrophone, faEnvelope, faChartSimple, faCookieBite
 } from '@fortawesome/free-solid-svg-icons';
 // Add to library
 library.add(
     faImage, faImages, faBolt, faStar, faRetweet, faLock, faTrashCan, faGear, faMagnifyingGlass,
     faPenToSquare, faEye, faCloudArrowUp, faCaretDown, faChevronLeft, faArrowLeft, faUser, faRightFromBracket, 
     faInfoCircle, faCircleCheck, faCircleXmark, faCircleExclamation, faTriangleExclamation, faXmark, faRotate,
-    regularCircle, solidCircle, faVideo, faPlus, faUpload, faClock, faFileLines, faHashtag, faSpinner, faFloppyDisk
+    regularCircle, solidCircle, faVideo, faPlus, faUpload, faClock, faFileLines, faHashtag, faSpinner, faFloppyDisk,
+    faMicrophone, faEnvelope, faChartSimple, faCookieBite
 );
 
 // Axios

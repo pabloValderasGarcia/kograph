@@ -2,13 +2,14 @@
 # | ---------------------- IMPORTACIONES NECESARIAS ---------------------- |
 # | ---------------------------------------------------------------------- |
 
+from backend.serializers import PasswordResetSerializer, CustomUserSerializer
 from rest_framework.decorators import api_view, permission_classes
+from .aws import find_matching_files, get_faces_info, get_labels
 from django.contrib.auth.tokens import default_token_generator    
 from rest_framework.parsers import MultiPartParser, FormParser
 from djoser.serializers import PasswordResetConfirmSerializer
 from django.contrib.auth.decorators import login_required
 from moviepy.video.io.VideoFileClip import VideoFileClip
-from backend.serializers import PasswordResetSerializer
 from rest_framework.generics import UpdateAPIView
 from templated_mail.mail import BaseEmailMessage
 from rest_framework.permissions import AllowAny
@@ -19,7 +20,7 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404, FileResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .apps import rekognition_client
+from .apps import get_rekognition_client
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status
@@ -28,8 +29,6 @@ from .models import Album, File
 from datetime import timedelta
 from djoser import utils
 import backend.settings
-from io import BytesIO
-from PIL import Image
 import numpy as np
 import imageio
 import uuid
@@ -41,6 +40,8 @@ import os
 @permission_classes([AllowAny])
 def options_view():
     return Response()
+
+rekognition_client = get_rekognition_client()
 
 # | ---------------------------------------------------------------- |
 # | ---------------------- EMAIL Y CONTRASEÑA ---------------------- |
@@ -165,6 +166,69 @@ class ValidateLinkView(APIView):
         else:
             return Response({'detail': 'Invalid reset link.'}, status=status.HTTP_400_BAD_REQUEST)
         
+# | ----------------------------------------------------- |
+# | ---------------------- USUARIO ---------------------- |
+# | ----------------------------------------------------- |
+
+# Vista para actualizar el usuario
+class CustomUserView(UpdateAPIView):
+    serializer_class = CustomUserSerializer
+    
+    # Obtener el usuario actual
+    def get_queryset(self):
+        return self.request.user
+    
+    # Obtener userdata
+    def get(self, request, *args, **kwargs):
+        instance = self.request.user
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    
+    # Acutalizar usuario
+    def put(self, request, *args, **kwargs):
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.request.user
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            
+            # Actualizar username
+            username = request.data.get('username')
+            if username:
+                instance.username = username
+                instance.save()
+            
+            # Actualizar picture
+            picture = request.FILES.get('picture')
+            if picture:
+                # Generar un nombre único para la imagen
+                picture_name = str(uuid.uuid4()) + '.jpg'
+
+                # Guardar la nueva imagen en la carpeta pictures
+                pictures_dir = os.path.join(backend.settings.BASE_DIR, 'pictures')
+                if not os.path.exists(pictures_dir):
+                    os.makedirs(pictures_dir)
+                picture_path_full = os.path.normpath(os.path.join(pictures_dir, picture_name))
+                with open(picture_path_full, 'wb+') as destination:
+                    for chunk in picture.chunks():
+                        destination.write(chunk)
+                
+                # Eliminar la imagen anterior de perfil, si existe
+                if instance.picture:
+                    previous_picture_path = os.path.join(backend.settings.BASE_DIR, instance.picture.lstrip("/"))
+                    if os.path.exists(previous_picture_path):
+                        os.remove(previous_picture_path)
+                
+                # Guardar la ruta de la imagen en el campo picture del usuario
+                instance.picture = "/" + os.path.relpath(picture_path_full, start=backend.settings.BASE_DIR).replace("\\", "/")
+                instance.save()
+
+            return Response(serializer.data)
+        except Exception as e:
+            print("Error:", e)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 # | -------------------------------------------------------------- |
 # | ---------------------- MANEJO DE ALBUMS ---------------------- |
 # | -------------------------------------------------------------- |
@@ -271,19 +335,12 @@ def serve_protected_file(request, file_path):
     response['Content-Disposition'] = f'attachment; filename={file_path}'
 
     return response
-        
+
 # Vista para conseguir ficheros
 class GetFiles(APIView):
     def post(self, request):
-        # Iniciamos variables necesarias
-        search_value = request.data.get('search', '')
         user_id = request.user.id
         user_files = File.objects.filter(user_id=user_id)
-        
-        # Si está buscando devolvemos los ficheros donde algunos de sus campos incluya el valor x
-        if search_value:
-            user_files = user_files.filter(title__icontains=search_value) | user_files.filter(description__icontains=search_value)
-        
         serializer = FileSerializer(user_files, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -311,6 +368,22 @@ class UploadFile(APIView):
         # Verificamos que sea válido
         if serializer.is_valid() and (type == 'video' or type == 'image'):
             file_instance = serializer.save()
+            
+            # Obtención de etiquetas en caso de imagen
+            if type == 'image':
+                # Obtenemos las etiquetas
+                labels = get_labels(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file_instance.file)))
+                feelings = get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file_instance.file)))
+                if labels:
+                    # Actualizamos el fichero con los campos aws
+                    aws_tags = ','.join(tag['Name'] for tag in labels)
+                    file_instance.aws_tags = aws_tags
+                if feelings:
+                    # Actualizamos el fichero con los campos aws
+                    top_emotions = sorted(feelings[0]['Emotions'], key=lambda x: x['Confidence'], reverse=True)[:2]
+                    aws_feelings = ','.join(emotion['Type'].capitalize() for emotion in top_emotions)
+                    file_instance.aws_feelings = aws_feelings
+                file_instance.save()
 
             # Creación de miniatura en caso de vídeo
             if type == 'video':
@@ -387,10 +460,6 @@ class ShowFile(APIView):
         # Verificamos que exista el id
         if not file_id:
             return Response({'detail': 'No file ID provided'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verificar que el objeto rekognition_client esté configurado
-        if rekognition_client is None:
-            return Response({'detail': 'Rekognition client not configured.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         try:
             # Conseguimos y devolvemos el fichero
@@ -453,117 +522,3 @@ class SearchPerson(APIView):
         # Serializar y devolver la lista de archivos coincidentes
         matching_serializer = FileSerializer(matching_files, many=True)
         return Response(matching_serializer.data, status=status.HTTP_200_OK)
-    
-# Función para comprimir una imagen
-def compress_image(image_bytes, quality=85):
-    try:
-        # Abrir la imagen desde bytes
-        image = Image.open(BytesIO(image_bytes))
-
-        # Convertir la imagen a modo de color RGB si es RGBA
-        if image.mode == 'RGBA':
-            image = image.convert('RGB')
-
-        # Crear un buffer para la imagen comprimida
-        compressed_image_buffer = BytesIO()
-
-        # Guardar la imagen comprimida en el buffer
-        image.save(compressed_image_buffer, format='JPEG', quality=quality)
-
-        # Obtener los bytes de la imagen comprimida
-        compressed_image_bytes = compressed_image_buffer.getvalue()
-
-        return compressed_image_bytes
-
-    except Exception as e:
-        print(e)
-        return None
-
-# Función para conseguir los ficheros donde aparecen caras de un fichero
-def find_matching_files(user_files, file_bytes):
-    matching_files = []
-
-    # Comprimimos el fichero y verificamos que exista
-    compressed_image_bytes = compress_image(file_bytes)
-    if not compressed_image_bytes:
-        return Response({'detail': 'Invalid target image.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # Recorremos cada fichero del usuario para comprobar si x es igual
-    for file in user_files:
-        file_faces_info = get_faces_info(str(backend.settings.BASE_DIR) + '\\' + os.path.normpath(str(file.file)))
-
-        if file_faces_info is not None and len(file_faces_info) > 0:
-            # Obtenemos bytes del fichero
-            compressed_file_image_bytes = compress_image(file.file.read())
-            
-            try:
-                # Utilizar rekognition_client para comparar las caras usando compare_faces
-                comparison_response = rekognition_client.compare_faces(
-                    TargetImage={
-                        'Bytes': compressed_image_bytes
-                    },
-                    SourceImage={
-                        'Bytes': compressed_file_image_bytes
-                    }
-                )
-
-                # Verificar si hay coincidencias
-                if any(match['Similarity'] >= 70.0 for match in comparison_response['FaceMatches']):
-                    matching_files.append(file)
-            except Exception as e:
-                print(f"Error: {str(e)}")
-                return None
-
-    return matching_files
-        
-    
-# Función para conseguir la información importante de cada cara de un fichero
-def get_faces_info(file_path):
-    try:
-        with open(file_path, 'rb') as file:
-            # Comprimir la imagen antes de enviarla
-            compressed_image_bytes = compress_image(file.read())
-            
-            # Utilizar rekognition_client para obtener información sobre las caras en el archivo
-            response = rekognition_client.detect_faces(
-                Image={
-                    'Bytes': compressed_image_bytes
-                },
-                Attributes=['ALL']
-            )
-                    
-            # Extraer información relevante sobre las caras
-            faces_info = []
-            for face_detail in response['FaceDetails']:
-                face_info = {
-                    'BoundingBox': face_detail['BoundingBox'],
-                    'Confidence': face_detail['Confidence'],
-                }
-                if face_info['Confidence'] >= 70.0:
-                    faces_info.append(face_info)
-
-            return faces_info
-
-    except Exception as e:
-        print(e)
-        return None
-    
-# Función para conseguir etiquetas de una imagen
-def get_labels(file_path):
-    try:
-        with open(file_path, 'rb') as file:
-            # Comprimir la imagen antes de enviarla
-            compressed_image_bytes = compress_image(file.read())
-            
-            # Utilizar rekognition_client para obtener etiquetas
-            response = rekognition_client.detect_labels(
-                Image={
-                    'Bytes': compressed_image_bytes
-                }
-            )
-                    
-            return response['Labels']
-
-    except Exception as e:
-        print(e)
-        return None

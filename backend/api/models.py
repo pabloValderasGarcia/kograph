@@ -42,13 +42,14 @@ class User(AbstractUser):
         unique=True,
         validators=[
             RegexValidator(
-                regex='^[a-zA-Z0-9_\.\-]{1,20}',
+                regex=r'^[a-zA-Z0-9_\.\-]{1,20}',
                 message="Username must contain letters, numbers, or special characters (_.)."
             ),
             MinLengthValidator(1, 'Username must be at least 1 character.'),
             MaxLengthValidator(20, 'Username cannot be more than 20 characters.'),
         ]
     )
+    picture = models.CharField(max_length=255, blank=True)
     activation_token_used = models.BooleanField(default=False)
 
 # Modelo álbum para manejar sus campos
@@ -68,6 +69,8 @@ class File(models.Model):
     type = models.CharField(max_length=50, default='image')
     thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)
     duration = models.DurationField(null=True, blank=True)
+    aws_tags = models.CharField(max_length=1000, blank=True, null=True)
+    aws_feelings = models.CharField(max_length=1000, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     origin_created_at = models.DateTimeField(default=timezone.now)
 

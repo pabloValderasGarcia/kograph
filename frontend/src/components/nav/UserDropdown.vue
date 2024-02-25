@@ -1,5 +1,6 @@
 <script>
 import { notify } from 'notiwind';
+import UserPicture from './UserPicture.vue';
 
 export default {
     name: 'UserItem',
@@ -32,14 +33,14 @@ export default {
             }
         },
         dark() {
-            document.querySelector('body').classList.add('dark-mode')
-            this.darkMode = true
-            this.$emit('dark')
+            document.querySelector('body').classList.add('dark-mode');
+            this.darkMode = true;
+            this.$emit('dark');
         },
         light() {
-            document.querySelector('body').classList.remove('dark-mode')
-            this.darkMode = false
-            this.$emit('light')
+            document.querySelector('body').classList.remove('dark-mode');
+            this.darkMode = false;
+            this.$emit('light');
         },
         modeToggle() {
             if (this.darkMode || document.querySelector('body').classList.contains('dark-mode')) {
@@ -53,25 +54,26 @@ export default {
     },
     computed: {
         darkDark() {
-            return this.darkMode && 'darkmode-toggled'
+            return this.darkMode && 'darkmode-toggled';
         }
     },
     mounted() {
-        document.addEventListener('click', this.close)
+        document.addEventListener('click', this.close);
     },
     beforeUnmount() {
-        document.removeEventListener('click', this.close)
-    }
+        document.removeEventListener('click', this.close);
+    },
+    components: { UserPicture }
 }
 </script>
 
 <template>
     <div class="user">
-        <div class="picture" @click.prevent="toggleDropdown"></div>
+        <UserPicture @click.prevent="toggleDropdown" />
         <div class="dropdown" v-if="state">
             <div class="user_info">
                 <div class="user_data">
-                    <div class="picture picture_dropdown"></div>
+                    <UserPicture @click.prevent="toggleDropdown" class="picture_dropdown"/>
                     <div v-if="this.$store.state.user">
                         <p>{{ this.$store.state.user.username }}</p>
                         <div class="user_email">
@@ -82,7 +84,7 @@ export default {
                 </div>
             </div>
             <div class="dropdown_buttons">
-                <p @click="this.$router.push('/account')">My Account</p>
+                <p @click="this.$route.path == '/account' ? '' : this.$router.push('/account')" :style="{ 'border-left': $route.path === '/account' ? '2px solid' : 'none', 'padding-left': $route.path === '/account' ? '10px' : '0', 'font-weight': $route.path === '/account' ? 'bold' : '' }">My Account</p>
                 <p @click="modeToggle">Dark Mode
                     <span class="mode-toggle" :class="darkDark">
                         <div class="toggle">
@@ -105,15 +107,8 @@ export default {
     position: relative;
 }
 
-.picture {
-    cursor: pointer;
-    width: 38px;
-    aspect-ratio: 1/1;
-    border-radius: 50%;
-    background-color: #D06C6C;
-}
-
 .dropdown {
+    z-index: 1;
     position: absolute;
     right: -15px;
     top: 53px;

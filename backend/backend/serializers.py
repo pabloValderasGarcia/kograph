@@ -4,7 +4,7 @@
 
 from django.core.validators import RegexValidator, MinLengthValidator, MaxLengthValidator
 from django.contrib.auth.password_validation import validate_password
-from djoser.serializers import UserCreateSerializer
+from djoser.serializers import UserCreateSerializer, UserSerializer
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -70,6 +70,17 @@ class CustomUserCreateSerializer(UserCreateSerializer):
     class Meta(UserCreateSerializer.Meta):
         model = get_user_model()
         fields = ('id', 'email', 'username', 'password')
+
+# Serializador para la actualización de usuario
+class CustomUserSerializer(UserSerializer):
+    picture = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        model = get_user_model()
+        fields = ('id', 'email', 'username', 'picture')
+        
+    def get_picture(self, obj):
+        return obj.picture if obj.picture else None
 
 # | --------------------------------------------------------------------- |
 # | ---------------------- SERIALIZADOR CONTRASEÑA ---------------------- |

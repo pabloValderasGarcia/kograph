@@ -1,6 +1,7 @@
 <script>
 import axios from 'axios';
 import { notify } from 'notiwind';
+import { mapState, mapMutations } from 'vuex';
 export default {
 	name: 'ShowFile',
     data() {
@@ -28,12 +29,21 @@ export default {
 		// Obtenemos la información de la imagen
 		const file_id = this.$route.params.id;
         if (file_id) {
-			const response = await axios.get(`${process.env.VUE_APP_SERVER_URL}/file/show/${file_id}/`);
-            this.file = response.data;
-			this.titleText = this.file.title;
-			this.descriptionText = this.file.description;
-			document.title = `${this.file.title} - Kograph`;
+			try {
+				const response = await axios.get(`${process.env.VUE_APP_SERVER_URL}/file/show/${file_id}/`);
+				this.file = response.data;
+				this.titleText = this.file.title;
+				this.descriptionText = this.file.description;
+				document.title = `${this.file.title} - Kograph`;
+			} catch (error) {
+				this.$router.replace('/error');
+			}
         }
+		setInterval(() => {
+            if (this.$store.state.access == '') {
+                this.$router.push('/');
+            }
+        }, 59000);
     },
 	beforeUnmount() {
 		window.removeEventListener('resize', this.handleResize);
@@ -47,6 +57,7 @@ export default {
 		}
 	},
     computed: {
+		...mapState(['originalFilesData']),
 		// Obtiene la url entera del servidor de la imagen
 		fullFileUrl() {
 			return (file) => {
@@ -88,6 +99,7 @@ export default {
         }
     },
 	methods: {
+		...mapMutations(['setOriginalFilesData']),
 		// Métodos para editar x elemento (nombre, descripción...)
 		editElement(property) {
 			if (property === 'title') {
@@ -98,14 +110,26 @@ export default {
 		},
 		async updateElement(property, value) {
 			try {
+				// Comprobamos que el valor nuevo no sea igual que el antiguo
 				if (value !== this.file[property]) {
+					// Hacemos petición para actualizar fichero según propiedad
 					const response = await axios.put(`${process.env.VUE_APP_SERVER_URL}/file/update/${this.file.id}/`, { 
 						property: property,
 						value: value
 					});
 					this.file[property] = response.data[property];
 					document.title = `${this.file.title} - Kograph`;
+
+					// Actualizamos filesData original para conservar cambios al salir del componente
+					this.setOriginalFilesData(this.originalFilesData.map(file => {
+						if (file.id === this.file.id) {
+							return { ...file, [property]: response.data[property] };
+						} else {
+							return file;
+						}
+					}));
 					
+					// Notificamos al usuario de la actualización con éxito
 					notify({
 						group: "foo",
 						title: "Success",
@@ -113,6 +137,7 @@ export default {
 						type: "success"
 					}, 4000);
 
+					// Evitamos que se muestre cierto elemento si ya ha terminado de actualizarse
 					if (property === 'title') {
 						this.editingTitle = false;
 					} else if (property === 'description') {
@@ -137,13 +162,19 @@ export default {
 		},
 		// Método para mostrar toda la información recogida de AWS
 		async showAWSTags() {
+			// Si no le ha dado al botón...
 			if (!this.awsButtonClicked) {
 				this.awsButtonClicked = true;
 				this.isLoading = true;
+
 				if (!this.file.aws) {
 					this.handleResize();
+
+					// Recogemos los datos del fichero
 					const response = await axios.get(`${process.env.VUE_APP_SERVER_URL}/file/show/${this.file.id}/?aws=true`);
 					this.file = response.data;
+
+					// Mostramos mensaje de muestra positivo/negativo
 					if (this.file.aws.faces && this.file.aws.labels) {
 						this.showAWS = true;
 						notify({
@@ -164,7 +195,7 @@ export default {
 					this.showAWS = !this.showAWS;
 				}
 				this.isLoading = false;
-			} else if (this.file.aws) {
+			} else if (this.file.aws) { // Si le ha dado al botón, simplemente ocultamos los datos
 				this.showAWS = !this.showAWS;
 			}
 		},
@@ -285,10 +316,19 @@ export default {
 			</div>
 			<div class="buttons">
 				<div class="left_buttons">
-					<font-awesome-icon @click="this.$router.go(-1)" icon="arrow-left"/>
-					<font-awesome-icon v-if="file.type == 'image'" @click="showAWSTags" :class="isLoading ? 'loading' : ''" :icon="isLoading ? 'spinner' : 'bolt'"/>
+					<div class="tooltip ttl" @click="this.$router.go(-1)">
+						<font-awesome-icon icon="arrow-left"/>
+						<p>Back</p>
+					</div>
+					<div class="tooltip ttl" @click="showAWSTags">
+						<font-awesome-icon v-if="file.type == 'image'" :class="isLoading ? 'loading' : ''" :icon="isLoading ? 'spinner' : 'bolt'"/>
+						<p>AI&nbsp;Tags</p>
+					</div>
 				</div>
-				<font-awesome-icon @click="toggleSideBar" :icon="showSideBar ? 'xmark' : 'chevron-left'"/>
+				<div class="tooltip ttr" @click="toggleSideBar">
+					<font-awesome-icon :icon="showSideBar ? 'xmark' : 'chevron-left'"/>
+					<p>Close</p>
+				</div>
 			</div>
 			<video v-if="file.type == 'video'" :src="fullFileUrl(file)" controls></video>
 		</div>
@@ -301,8 +341,14 @@ export default {
 					<div>
 						<p><font-awesome-icon :icon="['far', 'image']"/>Name</p>
 						<div class="flex gap-2">
-							<font-awesome-icon v-if="editingTitle && titleText != file.title" class="cursor-pointer" @click="updateElement('title', titleText)" icon="floppy-disk"/>
-							<font-awesome-icon class="cursor-pointer" @click="editElement('title')" :icon="editingTitle ? 'xmark' : 'pen-to-square'"/>
+							<div class="tooltip ttr cursor-pointer" @click="updateElement('title', titleText)" v-if="editingTitle && titleText != file.title">
+								<font-awesome-icon icon="floppy-disk"/>
+								<p>Save</p>
+							</div>
+							<div class="tooltip ttr cursor-pointer" @click="editElement('title')">
+								<font-awesome-icon :icon="editingTitle ? 'xmark' : 'pen-to-square'"/>
+								<p>Edit</p>
+							</div>
 						</div>
 					</div>
 					<p v-if="!editingTitle">{{ file.title }}</p>
@@ -312,8 +358,14 @@ export default {
 					<div>
 						<p><font-awesome-icon icon="circle-info"/>Description</p>
 						<div class="flex gap-2">
-							<font-awesome-icon v-if="editingDescription && descriptionText != file.description" class="cursor-pointer" @click="updateElement('description', descriptionText)" icon="floppy-disk"/>
-							<font-awesome-icon class="cursor-pointer" @click="editElement('description')" :icon="editingDescription ? 'xmark' : 'pen-to-square'"/>
+							<div class="tooltip ttr cursor-pointer" @click="updateElement('description', descriptionText)" v-if="editingDescription && descriptionText != file.description">
+								<font-awesome-icon icon="floppy-disk"/>
+								<p>Save</p>
+							</div>
+							<div class="tooltip ttr cursor-pointer" @click="editElement('description')">
+								<font-awesome-icon :icon="editingDescription ? 'xmark' : 'pen-to-square'"/>
+								<p>Edit</p>
+							</div>
 						</div>
 					</div>
 					<p v-if="!editingDescription">{{ file.description ? file.description : 'None' }}</p>
@@ -325,19 +377,27 @@ export default {
 					</div>
 					<p>{{ formattedDate }}</p>
 				</div>
-				<div v-if="showAWS && file.aws.labels && file.aws.labels.length > 0">
+				<!-- TAGS -->
+				<div v-if="showAWS && file">
 					<div>
 						<p><font-awesome-icon icon="hashtag"/>AI Tags</p>
 					</div>
-					<div class="aws_tags">
+					<div class="aws_tags" v-if="file.aws && file.aws.labels.length > 0">
 						<p v-for="(label, index) in file.aws.labels" :key="index">{{label.Name}}</p>
 					</div>
-				</div>
-				<div v-if="showAWS && file.aws.labels && file.aws.labels.length == 0">
-					<div>
-						<p><font-awesome-icon icon="hashtag"/>AI Tags</p>
+					<div class="aws_tags" v-else>
+						<p>None</p>
 					</div>
-					<div class="aws_tags">
+				</div>
+				<!-- FEELINGS -->
+				<div v-if="showAWS && file">
+					<div>
+						<p><font-awesome-icon icon="hashtag"/>AI Feelings</p>
+					</div>
+					<div class="aws_tags" v-if="file.aws_feelings && file.aws_feelings.length > 0">
+						<p v-for="(label, index) in file.aws_feelings.split(',')" :key="index">{{label}}</p>
+					</div>
+					<div class="aws_tags" v-else>
 						<p>None</p>
 					</div>
 				</div>
@@ -459,7 +519,7 @@ body.dark-mode .title svg:hover {
 .info > div {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 10px;
 }
 .info > div > div {
 	display: flex;
@@ -477,7 +537,7 @@ body.dark-mode .title svg:hover {
 	align-items: center;
 	gap: 10px;
 }
-.info p:last-child {
+.info p:not(.tooltip p):last-child {
 	line-height: 1.3em;
 	overflow-wrap: break-word;
 	word-break: break-all;
@@ -496,16 +556,37 @@ body.dark-mode .title svg:hover {
 	border: 2px solid white;
 	cursor: pointer;
 }
+.tooltip:not(.aws_target) {
+	position: relative;
+}
 .tooltip p {
 	width: fit-content;
 	border-radius: 5px;
-	padding: 10px 15px;
+	padding: 8px 15px;
 	position: absolute;
 	top: -42px;
 	left: -2px;
 	opacity: 0;
 	transition: opacity .3s;
 	background-color: white;
+	pointer-events: none;
+}
+.info .tooltip p {
+	background-color: #d7d7d7 !important;
+}
+body.dark-mode .info .tooltip p {
+	background-color: black !important;
+}
+.ttl p {
+	top: unset !important;
+	left: 0 !important;
+	bottom: -40px !important;
+}
+.ttr p {
+	top: unset !important;
+	left: unset !important;
+	right: 0 !important;
+	bottom: -40px !important;
 }
 body.dark-mode .tooltip p {
 	background-color: #242424;

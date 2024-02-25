@@ -1,39 +1,37 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import store from '@/store'
+import { createRouter, createWebHistory } from 'vue-router';
+import store from '@/store';
 
 // Root
-import RootView from '@/views/RootView.vue'
+import RootView from '@/views/RootView.vue';
 // File
-import ShowFile from '@/views/ShowFile.vue'
+import ShowFile from '@/views/ShowFile.vue';
+// Account
+import AccountView from '@/views/AccountView.vue';
 // Auth
-import ContainerSwitcher from '@/views/auth/ContainerSwitcher.vue'
-import RecoveryPassword from '@/views/auth/password/RecoveryPassword.vue'
-import ResetPassword from '@/views/auth/password/ResetPassword.vue'
-import ActivatedAccount from '@/views/auth/password/ActivatedAccount.vue'
+import ContainerSwitcher from '@/views/auth/ContainerSwitcher.vue';
+import RecoveryPassword from '@/views/auth/password/RecoveryPassword.vue';
+import ResetPassword from '@/views/auth/password/ResetPassword.vue';
+import ActivatedAccount from '@/views/auth/password/ActivatedAccount.vue';
 // Errors
-import NotFoundView from '@/views/errors/NotFoundView.vue'
+import NotFoundView from '@/views/errors/NotFoundView.vue';
 
 store.commit('initializeStore');
 
 // Rutas
 const routes = [
     // APP
-    {
-        path: '/',
-        name: 'RootView',
-        component: RootView,
-        children: [
-            { path: 'all', component: RootView, meta: { url: 'All' } },
-            { path: 'albums', component: RootView, meta: { url: 'Albums' } },
-            { path: 'ai', component: RootView, meta: { url: 'AI Powered' } },
-            { path: 'favorites', component: RootView, meta: { url: 'Favorites' } },
-            { path: 'shared', component: RootView, meta: { url: 'Shared' } },
-            { path: 'private', component: RootView, meta: { url: 'Private' } },
-            { path: 'settings', component: RootView, meta: { url: 'Settings' } }
-        ],
-    },
+    { path: '/', component: RootView },
+    { path: '/all', component: RootView, meta: { url: 'All' } },
+    { path: '/albums', component: RootView, meta: { url: 'Albums' } },
+    { path: '/ai', component: RootView, meta: { url: 'AI Powered' } },
+    { path: '/favorites', component: RootView, meta: { url: 'Favorites' } },
+    { path: '/shared', component: RootView, meta: { url: 'Shared' } },
+    { path: '/private', component: RootView, meta: { url: 'Private' } },
+    { path: '/settings', component: RootView, meta: { url: 'Settings' } },
     // FILE
     { path: '/file/:id', name: 'ShowFile', component: ShowFile, meta: { requiresAuth: true } },
+    // ACCOUNT
+    { path: '/account', component: AccountView, meta: { requiresAuth: true } },
     // AUTH
     { path: '/login', component: ContainerSwitcher },
     { path: '/signup', component: ContainerSwitcher },
@@ -45,7 +43,7 @@ const routes = [
     },
     { path: '/password/reset/confirm/:uid/:token', component: ResetPassword },
     { path: '/activate/:uid/:token', component: ActivatedAccount },
-    { path: '/:catchAll(.*)', component: NotFoundView },
+    { path: '/:catchAll(.*)', name: 'NotFound', component: NotFoundView },
 ]
 
 const router = createRouter({ history: createWebHistory(process.env.BASE_URL), routes })

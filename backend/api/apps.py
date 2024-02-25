@@ -15,14 +15,26 @@ def configure_rekognition_client():
     aws_secret_access_key = config('aws_secret_access_key')
     aws_session_token = config('aws_session_token')
     aws_region = config('aws_region')
+    bucket = config('bucket')
 
     try:
+        # Verificar credenciales intentando listar "contenedores"
+        s3_client = boto3.client('s3',
+                            aws_access_key_id=aws_access_key_id,
+                            aws_secret_access_key=aws_secret_access_key,
+                            aws_session_token=aws_session_token,
+                            region_name=aws_region)
+        s3_client.list_buckets()
+
+        # Verificar la existencia del bucket
+        s3_client.head_bucket(Bucket=bucket)
+        
         rekognition_client = boto3.client('rekognition',
                             aws_access_key_id=aws_access_key_id,
                             aws_secret_access_key=aws_secret_access_key,
                             aws_session_token=aws_session_token,
                             region_name=aws_region)
-
+        
         print("\033[92mCredentials configured correctly.\033[0m\n")
 
         # Devuelve el cliente rekognition
@@ -52,11 +64,11 @@ def configure_rekognition_client():
         # Cualquier otro error
         else:
             print(f"\033[91mError: {str(e)}\033[0m")
-        return None, None
+        return None
+    
+def get_rekognition_client():
+    return configure_rekognition_client()
 
 class ApiConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'api'
-
-    def ready(self):
-        rekognition_client = configure_rekognition_client()

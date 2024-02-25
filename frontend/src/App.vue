@@ -1,8 +1,10 @@
 <script>
 import { NotificationGroup, Notification } from 'notiwind';
+import ButtonItem from '@/components/others/ButtonItem.vue';
+import { FwbModal } from 'flowbite-vue';
 import { notify } from 'notiwind';
-import '@/assets/css/main.css'
-import axios from 'axios'
+import '@/assets/css/main.css';
+import axios from 'axios';
 
 export default {
     name: 'App',
@@ -10,6 +12,7 @@ export default {
         return {
             uploaded_success_open: false,
             uploaded_error_open: false,
+            showCookies: localStorage.getItem('cookies') ? false : true
         }
     },
     beforeCreate() {
@@ -26,15 +29,18 @@ export default {
         }, 59000);
     },
     methods: {
+        // Método para conseguir acceso a la aplicación y actualizar token cada minuto
         getAccess() {
             const accessData = {
                 refresh: this.$store.state.refresh
             }
 
+            // Petición actualizar token
             axios.post(`${process.env.VUE_APP_SERVER_URL}/auth/jwt/refresh/`, accessData).then(response => {
                 const access = response.data.access;
                 this.$store.commit('setAccess', access);
             }).catch(() => {
+                // Si no tenemos acceso, lo quitamos
                 this.$store.commit('removeAccess');
                 notify({
                     group: "foo",
@@ -43,17 +49,45 @@ export default {
                     type: "error"
                 }, 4000);
             })
-        }
+        },
+        // Método para administración de cookies
+        cookies(req) {
+            switch(req) {
+                case 'customize':
+                    break;
+                case 'reject':
+                    this.closeCookies();
+                    localStorage.setItem('cookies', false);
+                    break;
+                case 'accept':
+                    this.closeCookies();
+                    localStorage.setItem('cookies', true);
+                    break;
+            }
+        },
+        // Método para cerrar modal de cookies
+        closeCookies() {
+            this.showCookies = false;
+        },
+        // Método para evitar que el modal se cierre al darle a Escape
+        handleKeyDown(event) {
+            if (event.key === 'Escape' && this.showCookies) {
+                event.preventDefault();
+            }
+        },
     },
-    components: { NotificationGroup, Notification }
+    components: { NotificationGroup, Notification, FwbModal, ButtonItem }
 }
 </script>
 
 <template>
     <div id="app">
+        <!-- ROUTES -->
         <router-view />
+
+        <!-- NOTIFICATIONS -->
         <NotificationGroup group="foo">
-            <div class="z-[99999] fixed inset-0 flex items-end justify-end p-6 px-4 py-6 pointer-events-none">
+            <div class="z-[99999] fixed inset-0 flex items-end justify-end p-6 px-4 py-6 pointer-events-none alert-container">
                 <div class="w-full">
                     <!-- ALERTS -->
                     <Notification v-slot="{ notifications, close }" enter="transform ease-out duration-300 transition"
@@ -150,5 +184,72 @@ export default {
                 </div>
             </div>
         </NotificationGroup>
+
+        <!-- COOKIES -->
+        <fwb-modal class="my_modal cookies" v-if="showCookies" @close="closeCookies" @keydown.prevent="handleKeyDown">
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <font-awesome-icon icon="cookie-bite" class="text-amber-600" />Cookies Settings
+                </div>
+            </template>
+            <template #body>
+                We use cookies to enhance your browsing experience and provide personalized content on our website. Cookies are small text files that are stored on your device when you visit a website. They help us remember your preferences and improve the functionality of our site.
+            </template>
+            <template #footer>
+                <div class="modal_buttons cookies_buttons">
+                    <ButtonItem title="Customize" @click="cookies('customize')"/>
+                    <ButtonItem title="Reject All" @click="cookies('reject')"/>
+                    <ButtonItem title="Accept All" @click="cookies('accept')"/>
+                </div>
+            </template>
+        </fwb-modal>
     </div>
 </template>
+
+<style>
+    /* COOKIES */
+    .cookies > div:last-child {
+        pointer-events: none !important;
+    }
+    .cookies > div:last-child > div {
+        display: flex !important;
+        align-items: center;
+        max-width: 800px !important;
+    }
+    .cookies > div:last-child > div > div {
+        pointer-events: visible !important;
+    }
+    .cookies > div:last-child > div > div > *:first-child {
+        padding: 1.2rem 1.5rem 1rem 1.5rem !important;
+    }
+    .cookies > div:last-child > div > div > *:last-child {
+        padding: 1rem 1.5rem 1.2rem 1.5rem !important;
+    }
+    .cookies > div:last-child > div > div > div:first-child > button {
+        display: none !important;
+    }
+    .cookies > div:last-child > div > div > *:not(:first-child, :last-child) {
+        padding: 1rem 1.5rem !important;
+        line-height: 1.4em !important;
+    }
+    .cookies_buttons button:first-child {
+        background-color: #ececec !important;
+        color: black;
+    }
+    .cookies_buttons button:first-child:hover {
+        background-color: #e1e1e1 !important;
+    }
+    body.dark-mode .cookies_buttons button:first-child {
+        background-color: #373737 !important;
+        color: white;
+    }
+    body.dark-mode .cookies_buttons button:first-child:hover {
+        background-color: #464646 !important;
+    }
+    .cookies_buttons button:nth-child(2) {
+        background-color: #c14040 !important;
+    }
+    .cookies_buttons button:nth-child(2):hover {
+        background-color: #ab3c3c !important;
+    }
+</style>

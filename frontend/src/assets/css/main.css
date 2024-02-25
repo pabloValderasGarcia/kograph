@@ -49,11 +49,6 @@ table {
 
 /* CSS */
 
-html, body {
-	/* height: 100%; AQUI PARA SOLUCIONAR ERRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRORRRESS */
-	scroll-behavior: smooth;
-}
-
 * {
 	font-family: Lato !important;
 }

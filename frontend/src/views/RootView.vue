@@ -39,12 +39,11 @@ export default {
                 { id: 5, url: 'shared', title: 'Shared', icon: 'retweet' },
                 { id: 6, url: 'private', title: 'Private', icon: 'lock' },
                 { id: 7, url: 'settings', title: 'Settings', icon: 'gear' }
-            ],
-            originalFilesData: [],
+            ]
         }
     },
     computed: {
-        ...mapState(['isDragging', 'isLoading', 'filesData', 'groupedFiles', 'searched']),
+        ...mapState(['isDragging', 'isLoading', 'filesData', 'originalFilesData', 'groupedFiles', 'originalGroupedFiles', 'searched']),
         left_items() {
             return this.items.slice(0, 5);
         },
@@ -59,9 +58,10 @@ export default {
         },
     },
     mounted() {
-        document.body.addEventListener('dragover', this.handleDragOver);
-        document.body.addEventListener('dragleave', this.handleDragLeave);
-        document.body.addEventListener('drop', this.handleDragDrop);
+        this.onURLEnter();
+        document.documentElement.addEventListener('dragover', this.handleDragOver);
+        document.documentElement.addEventListener('dragleave', this.handleDragLeave);
+        document.documentElement.addEventListener('drop', this.handleDragDrop);
         window.addEventListener('resize', this.handleResize);
 
         // Comprobamos que esté autenticado para obtener datos del usuario
@@ -82,16 +82,22 @@ export default {
         }
     },
     beforeUnmount() {
-        document.body.removeEventListener('dragover', this.handleDragOver);
-        document.body.removeEventListener('dragleave', this.handleDragLeave);
-        document.body.removeEventListener('drop', this.handleDragDrop);
+        document.documentElement.removeEventListener('dragover', this.handleDragOver);
+        document.documentElement.removeEventListener('dragleave', this.handleDragLeave);
+        document.documentElement.removeEventListener('drop', this.handleDragDrop);
         window.removeEventListener('resize', this.handleResize);
     },
+    watch: {
+        $route() {
+            // Lógica para ejecutar cuando la ruta cambia
+            this.onURLEnter();
+        }
+    },
     methods: {
-        ...mapMutations(['setIsDragging', 'setIsLoading', 'setFilesData', 'setGroupedFiles', 'setSearched']),
+        ...mapMutations(['setSearchValue', 'setIsDragging', 'setIsLoading', 'setFilesData', 'setGroupedFiles', 'setSearched']),
         // Cambiar título al entrar en x componente
         onURLEnter() {
-            document.title = this.url ? `${this.url} - Kograph` : 'Kograph';
+            document.title = this.url ? `${this.url} - Kograph` : 'Home - Kograph';
         },
         // Método para el control del ratón al entrar en la zona
         handleDragOver(e) {
@@ -126,7 +132,7 @@ export default {
                 this.fadeOut();
 
                 await this.$refs.allView.addFiles(Array.from(e.dataTransfer.files)); // Añadir ficheros
-                await this.$refs.allView.getFiles(); // Conseguir ficheros para mostrarlos
+                await this.getFiles(); // Conseguir ficheros para mostrarlos
             }
         },
         // Método para quitar con transición el drop area
@@ -166,6 +172,7 @@ export default {
         },
         // Método para conseguir archivos
         async getFiles() {
+            this.setSearchValue('');
             await this.$refs.allView.getFiles();
             this.setSearched(false);
         },
@@ -178,7 +185,6 @@ export default {
         // Método para encontrar fotos donde aparecen caras de x fichero
         async searchImage(e) {
             e.stopPropagation();
-            this.clicked = false;
             this.setSearched(false);
 
             // Variables necesarias
@@ -196,7 +202,7 @@ export default {
                     if (loader) {
                         const messageParagraph = document.createElement('p');
                         messageParagraph.textContent = 'Please wait. The process will take as long as the number of files you have.';
-                        messageParagraph.classList.add('text-[1.2em]', 'text-center');
+                        messageParagraph.classList.add('text-center');
 
                         // Animación de aparición de mensaje estilo Windows
                         messageParagraph.animate(
@@ -212,7 +218,7 @@ export default {
                         );
                         loader.insertBefore(messageParagraph, loader.firstChild);
                     }
-                }, 5000)
+                }, 2500)
 
                 // Petición al servidor para conseguir las fotos parecidas
                 const response = await axios.post(`${process.env.VUE_APP_SERVER_URL}/file/search_person/`, formData, {
@@ -250,35 +256,14 @@ export default {
         },
         // Método para manejar los resultados de la búsqueda recibidos del componente SearcherItem
         async handleSearchResults(data) {
-            this.setIsLoading(true);
-
-            if (!this.originalFilesData.length) {
-                this.originalFilesData = [...this.filesData];
-                this.originalGroupedFiles = this.groupedFiles;
-            }
-
-            // Comprobamos que el usuario haya escrito algo
-            if (data.value) {
-                this.setFilesData(data.data);
-                const filteredGroupedFiles = {};
-                Object.keys(this.originalGroupedFiles).forEach(key => {
-                    filteredGroupedFiles[key] = this.originalGroupedFiles[key].filter(file => {
-                        return data.data.some(dataFile => dataFile.id === file.id);
-                    });
-                    if (filteredGroupedFiles[key].length === 0) {
-                        delete filteredGroupedFiles[key];
-                    }
-                });
-
-                this.setGroupedFiles({ files: filteredGroupedFiles });
-            } else {
-                if (data.data.length == this.originalFilesData.length) {
-                    this.setFilesData(this.originalFilesData);
-                    this.setGroupedFiles({ files: this.originalGroupedFiles });
-                } else {
-                    this.setFilesData([...data.data]);
-
+            // Comprobamos si no es una búsqueda de una búsqueda de imagen
+            if (!this.searched) {
+                // Comprobamos si el usuario ha escrito algo
+                if (data.value) {
+                    this.setFilesData(data.data);
                     const filteredGroupedFiles = {};
+
+                    // Recorremos los ficheros originales y filtramos para obtener los archivos según busqueda
                     Object.keys(this.originalGroupedFiles).forEach(key => {
                         filteredGroupedFiles[key] = this.originalGroupedFiles[key].filter(file => {
                             return data.data.some(dataFile => dataFile.id === file.id);
@@ -288,7 +273,40 @@ export default {
                         }
                     });
                     this.setGroupedFiles({ files: filteredGroupedFiles });
+                } else {
+                    // Si no ha escrito y la longitud de ficheros es 0, mostramos los originales
+                    if (data.data.length == 0) {
+                        this.setFilesData(this.originalFilesData);
+                        this.setGroupedFiles({ files: this.originalGroupedFiles });
+                    // Si no, mostramos los ficheros coincidentes
+                    } else {
+                        this.setFilesData([...data.data]);
+
+                        const filteredGroupedFiles = {};
+                        Object.keys(this.originalGroupedFiles).forEach(key => {
+                            filteredGroupedFiles[key] = this.originalGroupedFiles[key].filter(file => {
+                                return data.data.some(dataFile => dataFile.id === file.id);
+                            });
+                            if (filteredGroupedFiles[key].length === 0) {
+                                delete filteredGroupedFiles[key];
+                            }
+                        });
+                        this.setGroupedFiles({ files: filteredGroupedFiles });
+                    }
                 }
+            // De lo contrario, hacemos búsqueda de los ficheros buscados por imagen
+            } else {
+                const filteredGroupedFiles = {};
+                Object.keys(this.originalGroupedFiles).forEach(key => {
+                    filteredGroupedFiles[key] = this.originalGroupedFiles[key].filter(file => {
+                        // Comprueba si el archivo está presente tanto en data.data como en this.filesData
+                        return data.data.some(dataFile => dataFile.id === file.id) && this.filesData.some(fd => fd.id === file.id);
+                    });
+                    if (filteredGroupedFiles[key].length === 0) {
+                        delete filteredGroupedFiles[key];
+                    }
+                });
+                this.setGroupedFiles({ files: filteredGroupedFiles });
             }
 
             this.setIsLoading(false);
@@ -308,27 +326,36 @@ export default {
             <div class="nav">
                 <LogoItem @click="this.$router.push('/all')" v-show="pageWidth > 600" />
                 <div class="nav_mobile" v-show="pageWidth <= 600"></div>
-                <SearcherItem @search-results="handleSearchResults"/>
-                <font-awesome-icon v-if="url == 'All' && searched" @click="getFiles" icon="rotate" class="cursor-pointer" />
-                <label for="search_image" title="Upload files" v-if="url == 'All' && filesData.length > 0">
-                    <svg class="search_image_icon" xmlns="http://www.w3.org/2000/svg" width="17" height="18" viewBox="0 0 17 18"
-                        fill="none">
-                        <path
-                            d="M0 3C0 1.34315 1.34315 0 3 0H11C14.3137 0 17 2.68629 17 6V15C17 16.6569 15.6569 18 14 18H3C1.34315 18 0 16.6569 0 15V3Z"
-                            fill="black" class="i1" />
-                        <path
-                            d="M10.3129 9.65571C10.3129 10.4624 10.0509 11.2076 9.6097 11.8122L11.8352 14.0391C12.0549 14.2588 12.0549 14.6155 11.8352 14.8352C11.6155 15.0549 11.2586 15.0549 11.0389 14.8352L8.81337 12.6084C8.20865 13.0513 7.4633 13.3114 6.65643 13.3114C4.6366 13.3114 3 11.6751 3 9.65571C3 7.63628 4.6366 6 6.65643 6C8.67625 6 10.3129 7.63628 10.3129 9.65571ZM6.65643 12.1866C6.98885 12.1866 7.31802 12.1211 7.62514 11.9939C7.93226 11.8668 8.21132 11.6803 8.44638 11.4453C8.68144 11.2103 8.8679 10.9313 8.99511 10.6242C9.12233 10.3172 9.1878 9.98807 9.1878 9.65571C9.1878 9.32335 9.12233 8.99425 8.99511 8.68719C8.8679 8.38013 8.68144 8.10113 8.44638 7.86611C8.21132 7.6311 7.93226 7.44468 7.62514 7.31749C7.31802 7.1903 6.98885 7.12484 6.65643 7.12484C6.324 7.12484 5.99483 7.1903 5.68771 7.31749C5.38059 7.44468 5.10154 7.6311 4.86648 7.86611C4.63142 8.10113 4.44496 8.38013 4.31774 8.68719C4.19053 8.99425 4.12505 9.32335 4.12505 9.65571C4.12505 9.98807 4.19053 10.3172 4.31774 10.6242C4.44496 10.9313 4.63142 11.2103 4.86648 11.4453C5.10154 11.6803 5.38059 11.8668 5.68771 11.9939C5.99483 12.1211 6.324 12.1866 6.65643 12.1866Z"
-                            fill="white" class="i2" />
-                        <path d="M16.2188 4.11221L16.6158 5.7H11.3V0.384233L12.89 0.781739L14.981 1.92229L16.2188 4.11221Z"
-                            fill="white" stroke="black" stroke-width="0.6" class="i3" />
-                    </svg>
-                </label>
-                <input type="file" id="search_image" @change="searchImage($event)" class="hidden" v-if="url == 'All' && filesData.length > 0"/>
-                <label for="file-input" title="Upload files">
-                    <font-awesome-icon icon="upload" class="upload" />
-                </label>
-                <input type="file" id="file-input" multiple @change="onInputChange" class="hidden" />
-                <UserDropdown v-show="pageWidth > 600" title="Profile" />
+                <SearcherItem @search-results="handleSearchResults" ref="searcher"/>
+                <div class="tooltip cursor-pointer" v-if="url == 'All' && searched" @click="getFiles">
+                    <font-awesome-icon icon="rotate" />
+                    <p>Reload</p>
+                </div>
+                <div class="tooltip" v-if="url == 'All' && (filesData.length > 0 || originalFilesData.length > 0)">
+                    <label for="search_image">
+                        <svg class="search_image_icon" xmlns="http://www.w3.org/2000/svg" width="17" height="18" viewBox="0 0 17 18"
+                            fill="none">
+                            <path
+                                d="M0 3C0 1.34315 1.34315 0 3 0H11C14.3137 0 17 2.68629 17 6V15C17 16.6569 15.6569 18 14 18H3C1.34315 18 0 16.6569 0 15V3Z"
+                                fill="black" class="i1" />
+                            <path
+                                d="M10.3129 9.65571C10.3129 10.4624 10.0509 11.2076 9.6097 11.8122L11.8352 14.0391C12.0549 14.2588 12.0549 14.6155 11.8352 14.8352C11.6155 15.0549 11.2586 15.0549 11.0389 14.8352L8.81337 12.6084C8.20865 13.0513 7.4633 13.3114 6.65643 13.3114C4.6366 13.3114 3 11.6751 3 9.65571C3 7.63628 4.6366 6 6.65643 6C8.67625 6 10.3129 7.63628 10.3129 9.65571ZM6.65643 12.1866C6.98885 12.1866 7.31802 12.1211 7.62514 11.9939C7.93226 11.8668 8.21132 11.6803 8.44638 11.4453C8.68144 11.2103 8.8679 10.9313 8.99511 10.6242C9.12233 10.3172 9.1878 9.98807 9.1878 9.65571C9.1878 9.32335 9.12233 8.99425 8.99511 8.68719C8.8679 8.38013 8.68144 8.10113 8.44638 7.86611C8.21132 7.6311 7.93226 7.44468 7.62514 7.31749C7.31802 7.1903 6.98885 7.12484 6.65643 7.12484C6.324 7.12484 5.99483 7.1903 5.68771 7.31749C5.38059 7.44468 5.10154 7.6311 4.86648 7.86611C4.63142 8.10113 4.44496 8.38013 4.31774 8.68719C4.19053 8.99425 4.12505 9.32335 4.12505 9.65571C4.12505 9.98807 4.19053 10.3172 4.31774 10.6242C4.44496 10.9313 4.63142 11.2103 4.86648 11.4453C5.10154 11.6803 5.38059 11.8668 5.68771 11.9939C5.99483 12.1211 6.324 12.1866 6.65643 12.1866Z"
+                                fill="white" class="i2" />
+                            <path d="M16.2188 4.11221L16.6158 5.7H11.3V0.384233L12.89 0.781739L14.981 1.92229L16.2188 4.11221Z"
+                                fill="white" stroke="black" stroke-width="0.6" class="i3" />
+                        </svg>
+                    </label>
+                    <input type="file" id="search_image" @change="searchImage($event)" class="hidden"/>
+                    <p>Search&nbsp;person</p>
+                </div>
+                <div class="tooltip">
+                    <label for="file-input">
+                        <font-awesome-icon icon="upload" class="upload" />
+                    </label>
+                    <input type="file" id="file-input" multiple @change="onInputChange" class="hidden" />
+                    <p>Upload&nbsp;files</p>
+                </div>
+                <UserDropdown v-show="pageWidth > 600" />
             </div>
             <!-- EXPLORE -->
             <div class="explore" v-show="pageWidth > 600">
@@ -346,27 +373,13 @@ export default {
             </div>
 
             <!-- APP VIEWS -->
-            <transition @enter="onURLEnter" appear>
-                <AllView v-show="url == 'All' || url == 'Home'" ref="allView" />
-            </transition>
-            <transition @enter="onURLEnter" appear>
-                <AlbumView v-show="url == 'Albums'" />
-            </transition>
-            <transition @enter="onURLEnter" appear>
-                <AIView v-show="url == 'AI Powered'" />
-            </transition>
-            <transition @enter="onURLEnter" appear>
-                <FavoriteView v-show="url == 'Favorites'" />
-            </transition>
-            <transition @enter="onURLEnter" appear>
-                <SharedView v-show="url == 'Shared'" />
-            </transition>
-            <transition @enter="onURLEnter" appear>
-                <PrivateView v-show="url == 'Private'" />
-            </transition>
-            <transition @enter="onURLEnter" appear>
-                <SettingsView v-show="url == 'Settings'" />
-            </transition>
+            <AllView v-show="url == 'All' || url == 'Home'" ref="allView" />
+            <AlbumView v-show="url == 'Albums'" />
+            <AIView v-show="url == 'AI Powered'" />
+            <FavoriteView v-show="url == 'Favorites'" />
+            <SharedView v-show="url == 'Shared'" />
+            <PrivateView v-show="url == 'Private'" />
+            <SettingsView v-show="url == 'Settings'" />
 
             <!-- !DRAGNDROP -->
             <DropZone v-if="isDragging" id="dropArea" ref="dropArea" class="drop-area">
@@ -427,7 +440,7 @@ body.dark-mode .i3 {
 .explore {
     display: flex;
     justify-content: space-between;
-    margin: 65px 30px 20px 30px;
+    margin: 60px 30px 20px 30px;
 }
 
 .explore_items {
@@ -495,15 +508,6 @@ body.dark-mode .drop-area label div {
     border: 0 !important;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        }
-    to {
-        opacity: 1;
-    }
-}
-
 @keyframes appearAnimation {
     to {
         opacity: 1;
@@ -520,5 +524,30 @@ body.dark-mode .drop-area label div {
         justify-content: space-between;
         margin: 5px 20px 20px 20px;
     }
+}
+
+.tooltip {
+    position: relative;
+}
+
+.tooltip > p {
+	width: auto;
+	border-radius: 5px;
+	padding: 8px 15px;
+	position: absolute;
+	bottom: -40px;
+	right: 0;
+	opacity: 0;
+	transition: opacity .3s ease-in-out;
+	background-color: #d7d7d7;
+    pointer-events: none;
+}
+
+body.dark-mode .tooltip > p {
+	background-color: #373737;
+}
+
+.tooltip:hover > p {
+	opacity: 1;
 }
 </style>

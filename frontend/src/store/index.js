@@ -3,18 +3,26 @@ import axios from 'axios'
 
 export default createStore({
     state: {
+        // Access
         access: '',
         refresh: '',
         user: null,
+        // Dark mode
         darkMode: true,
         // Ficheros
+        searchValue: '',
         isDragging: false,
         isLoading: false,
         files: [],
         filesData: [],
+        originalFilesData: [],
         groupedFiles: {},
+        originalGroupedFiles: [],
         selectedFiles: [],
         searched: false,
+        // AI
+        aiMap: null,
+        aiMapElement: null,
     },
     mutations: {
         initializeStore(state) {
@@ -24,6 +32,7 @@ export default createStore({
                 axios.defaults.headers.common['Authorization'] = 'Bearer ' + state.access;
             }
         },
+        // Acceso
         setAccess(state, access) {
             state.access = access;
             localStorage.setItem('access', access);
@@ -33,6 +42,17 @@ export default createStore({
             state.refresh = refresh;
             localStorage.setItem('refresh', refresh);
         },
+        removeAccess(state) {
+            state.access = '';
+            state.refresh = '';
+            state.user = null;
+            localStorage.removeItem('access');
+            localStorage.removeItem('refresh');
+            localStorage.removeItem('darkMode');
+            localStorage.setItem('darkModeChanged', false);
+            delete axios.defaults.headers.common['Authorization'];
+        },
+        // Dark mode
         setDarkMode(state, value) {
             localStorage.setItem('darkMode', value);
             document.body.classList.toggle('dark-mode', eval(value));
@@ -44,6 +64,9 @@ export default createStore({
             this.commit('setDarkMode', value);
         },
         // Ficheros
+        setSearchValue(state, value) {
+            state.searchValue = value;
+        },
         setIsDragging(state, value) {
             state.isDragging = value;
         },
@@ -56,15 +79,31 @@ export default createStore({
         setFilesData(state, filesData) {
             state.filesData = filesData;
         },
+        setOriginalFilesData(state, originalFilesData) {
+            state.originalFilesData = originalFilesData;
+        },
         setGroupedFiles(state, payload) {
             const { key, files } = payload;
             if (key) {
                 if (files.length == 0) {
-                    state.groupedFiles[key] = [];
+                    delete state.groupedFiles[key];
                 } else {
+                    if (!state.groupedFiles[key]) {
+                        state.groupedFiles[key] = [];
+                    }
                     state.groupedFiles[key].push(files);
                 }
             } else state.groupedFiles = files;
+        },
+        setOriginalGroupedFiles(state, payload) {
+            const { key, files } = payload;
+            if (key) {
+                if (files.length == 0) {
+                    delete state.originalGroupedFiles[key];
+                } else {
+                    state.originalGroupedFiles[key].push(files);
+                }
+            } else state.originalGroupedFiles = files;
         },
         setSelectedFiles(state, selectedFiles) {
             state.selectedFiles = selectedFiles;
@@ -72,16 +111,12 @@ export default createStore({
         setSearched(state, value) {
             state.searched = value;
         },
-        // REMOVE
-        removeAccess(state) {
-            state.access = '';
-            state.refresh = '';
-            state.user = null;
-            localStorage.removeItem('access');
-            localStorage.removeItem('refresh');
-            localStorage.removeItem('darkMode');
-            localStorage.setItem('darkModeChanged', false);
-            delete axios.defaults.headers.common['Authorization'];
+        // AI
+        setAIMap(state, value) {
+            state.aiMap = value;
         },
+        setAIMapElement(state, value) {
+            state.aiMapElement = value;
+        }
     },
 });

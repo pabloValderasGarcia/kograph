@@ -79,7 +79,8 @@ AUTH_USER_MODEL = 'api.User'
 # Gestión de DJOSER (librería para gestión de usuarios)
 DJOSER = {
     'SERIALIZERS': {
-        'user_create': 'backend.serializers.CustomUserCreateSerializer'
+        'user_create': 'backend.serializers.CustomUserCreateSerializer',
+        'user': 'backend.serializers.CustomUserSerializer'
     },
     'EMAIL': {
         'activation': 'api.views.ActivationAccount',
