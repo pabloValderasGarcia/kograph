@@ -47,20 +47,20 @@ You'll need to configure the environment variables for the application to work c
 
 ```bash
 # SERVER URL
-VUE_APP_SERVER_URL=
+VUE_APP_SERVER_URL='http://www.example.com'
 
 # FRONTEND URL
-VUE_APP_BASE_URL=
+VUE_APP_BASE_URL='http://www.example.com'
 ```
 
 **/backend/.env**
 
 ```bash
 # YOUR APP NAME
-APP_NAME=
+APP_NAME='name'
 
 # FRONTEND URL
-FRONTEND_BASE_URL=
+FRONTEND_BASE_URL='http://www.example.com'
 
 # EMAIL
 EMAIL_APP_KEY='xxxx xxxx xxxx xxxx'
