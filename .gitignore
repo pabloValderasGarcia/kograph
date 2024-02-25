@@ -3,4 +3,5 @@ node_modules/
 /backend/venv
 /backend/files
 /backend/thumbnails
+/backend/pictures
 /frontend/.env
