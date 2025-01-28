@@ -87,7 +87,7 @@ bucket=
 
 ## Used client libraries
 
-[<img src="https://seeklogo.com/images/V/vuejs-logo-17D586B587-seeklogo.com.png" width="50" alt="vuejs" title="VueJS">](https://vuejs.org/)&nbsp;&nbsp;
+[<img src="https://static-00.iconduck.com/assets.00/vue-icon-512x439-f6q4zral.png" width="50" alt="vuejs" title="VueJS">](https://vuejs.org/)&nbsp;&nbsp;
 [<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Font_Awesome_logomark_blue.svg/1200px-Font_Awesome_logomark_blue.svg.png" width="50" alt="fontawesome" title="Fontawesome">](https://fontawesome.com/)&nbsp;&nbsp;
 [<img src="https://companieslogo.com/img/orig/axios-51d6caae.png?t=1701353255" width="50" alt="axios" title="Axios">](https://axios-http.com/)&nbsp;&nbsp;
 [<img src="./readme/leaflet.png" width="50" alt="leaflet" title="Leaflet">](https://leafletjs.com/)&nbsp;&nbsp;
